@@ -93,15 +93,22 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .field>label,.field>.lbl{font-size:14px;font-weight:500;color:var(--muted)}
 .lbl small{font-weight:400}
 .inp{position:relative}
-.inp input,.field textarea{width:100%;min-height:52px;border:1.5px solid var(--line);background:var(--field);border-radius:11px;padding:12px 14px;font-size:17px;outline:none;transition:border-color .12s,background .12s}
+.inp input,.field textarea{display:block;width:100%;max-width:100%;min-width:0;-webkit-appearance:none;appearance:none;min-height:52px;border:1.5px solid var(--line);background:var(--field);border-radius:11px;padding:12px 14px;font-size:17px;outline:none;transition:border-color .12s,background .12s}
+.inp input{height:52px;line-height:24px}
+.inp input[type="date"]{text-align:left}
+.inp input[type="date"]::-webkit-date-and-time-value{text-align:left;margin:0}
+.inp input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6}
 .field textarea{min-height:88px;resize:vertical;line-height:1.4}
+.field.boxed{background:var(--field);border:1px solid var(--line);border-radius:14px;padding:16px 16px 18px;gap:12px}
+.field.boxed>.lbl{color:var(--ink);font-weight:600;font-size:15px}
+.chips.fill .chip{width:100%}
 .inp input:focus,.field textarea:focus{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px var(--accent-soft)}
 .inp input:disabled{opacity:.45}
 .inp .unit{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none}
 .inp.has-unit input{padding-right:70px}
 .inp input.num{font-family:var(--f-mono);font-size:17px}
 .chips{display:flex;flex-wrap:wrap;gap:10px}
-.chip{min-height:50px;padding:0 18px;border-radius:11px;border:1.5px solid var(--line-strong);background:var(--surface);font-size:16px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-align:left;line-height:1.2;transition:background .1s,border-color .1s,transform .06s}
+.chip{min-height:52px;padding:0 18px;border-radius:11px;border:1.5px solid var(--line-strong);background:var(--surface);font-size:16px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-align:left;line-height:1.2;transition:background .1s,border-color .1s,transform .06s}
 .chip:active{transform:scale(.97)}
 .chip[data-m]::before{content:"";width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line-strong);flex:none;background:var(--field)}
 .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -333,15 +340,17 @@ const SCHEMA = [
     {k:"sites", t:"num", l:"Площадок", w:"third"},
     {k:"housing", t:"single", l:"Содержание", w:"full", o:["беспривязное","привязное","другое"], other:"другое"},
     {k:"alleys", t:"num", l:"Кормовых проходов", w:"third", u:"шт."},
-    {k:"alleysLength", t:"num", l:"Общая длина", w:"third", u:"м", dec:true},
-    {k:"alleyWidth", t:"num", l:"Минимальная ширина", w:"third", u:"м", dec:true},
+    {k:"alleysLength", t:"num", l:"Средняя длина", w:"third", u:"м", dec:true},
+    {k:"alleyWidth", t:"num", l:"Средняя ширина", w:"third", u:"м", dec:true},
     {k:"surface", t:"text", l:"Покрытие", w:"full"},
     {k:"surfaceFeatures", t:"multi", l:"Особенности проходов", w:"full", o:["есть уклоны","есть пороги","переходы между дворами"]},
+    {k:"conditions", t:"multi", l:"Условия эксплуатации", w:"full", box:true, o:["нестабильный интернет","нестабильная геолокация","есть место для парковки внутри двора","есть автоматические ворота"]},
     {k:"pushingNow", t:"multi", l:"Сейчас подталкиваем", w:"full", o:["вручную","трактором / погрузчиком","роботом","не подталкиваем"], excl:"не подталкиваем"},
     {k:"equipment", t:"text", l:"Марка техники / робота", w:"half"},
-    {k:"pushesPerDay", t:"num", l:"Подталкиваний в сутки", w:"half"},
-    {k:"staffHours", t:"num", l:"Время персонала на подталкивание", w:"half", u:"ч/сутки", dec:true},
-    {k:"noNight", t:"toggle", l:"Ночью", w:"half", o:["ночью не подталкиваем"]}
+    {k:"pushesPerDay", t:"num", l:"Подталкиваний днём", w:"half"},
+    {k:"staffHours", t:"num", l:"Время персонала на подталкивание", w:"third", u:"ч/сутки", dec:true},
+    {k:"nightPushes", t:"num", l:"Подталкиваний ночью", w:"third"},
+    {k:"noNight", t:"toggle", l:"Ночью", w:"third", o:["ночью не подталкиваем"]}
   ]},
   {id:"s3", num:"3", title:"Задача и интерес к МАРК", dealerSkip:true, fields:[
     {k:"priorities", t:"multi", l:"Что важно", lx:"до трёх пунктов", w:"full", max:3, o:["сократить ручной труд","обеспечить подталкивание ночью","соблюдать расписание","снизить использование трактора","улучшить доступность корма","заменить текущий робот","другое"], other:"другое"},
@@ -402,7 +411,7 @@ function fieldHTML(f){
     const chips = f.o.map(v=>`<button type="button" class="chip${f.pri?' pri':''}" data-k="${f.k}" data-v="${esc(v)}" ${m?'data-m':''} aria-pressed="false">${esc(v)}</button>`).join("");
     const other = f.other ? `<div class="inp other" id="${id}_ow" hidden><input id="${id}_o" data-k="${f.k}Other" placeholder="Уточните" autocomplete="off" enterkeyhint="next"></div>` : "";
     const hint = f.max ? `<span class="hint" id="${id}_h">Можно выбрать до ${f.max}</span>` : "";
-    return `<div class="field ${w}"><span class="lbl" id="${id}_l">${lbl}</span><div class="chips" role="group" aria-labelledby="${id}_l">${chips}</div>${other}${hint}</div>`;
+    return `<div class="field ${w}${f.box?' boxed':''}"><span class="lbl" id="${id}_l">${lbl}</span><div class="chips${f.t==='toggle'?' fill':''}" role="group" aria-labelledby="${id}_l">${chips}</div>${other}${hint}</div>`;
   }
   if (f.t==="area") return `<div class="field ${w}"><label for="${id}">${lbl}</label><textarea id="${id}" data-k="${f.k}" rows="3"></textarea></div>`;
   if (f.t==="ro") return `<div class="field ${w}"><label for="${id}">${lbl}</label><div class="inp"><input id="${id}" class="num" readonly tabindex="-1"></div></div>`;
@@ -414,7 +423,7 @@ function fieldHTML(f){
   if (f.ac) extra='autocomplete="'+f.ac+'"';
   if (!extra) extra='autocomplete="off"';
   const unit = f.u ? `<span class="unit">${esc(f.u)}</span>` : "";
-  return `<div class="field ${w}"><label for="${id}">${lbl}</label><div class="inp${f.u?' has-unit':''}"><input id="${id}" data-k="${f.k}" type="${type}" ${im} ${extra} enterkeyhint="next" class="${f.t==='num'?'num':''}" ${f.t==='text'?'autocapitalize="sentences"':''}></div></div>`;
+  return `<div class="field ${w}"><label for="${id}">${lbl}</label><div class="inp${f.u?' has-unit':''}"><input id="${id}" data-k="${f.k}" type="${type}" ${im} ${extra} enterkeyhint="next" class="${f.t==='num'?'num':''}" ${f.t==='text'?'autocapitalize="sentences"':''}>${unit}</div></div>`;
 }
 function buildForm(){
   const host = $("#sections"), rail = $("#rail");
@@ -461,7 +470,8 @@ function syncField(k){
   } else {
     const el = document.getElementById(id); if (el && el.value !== (form[k]||"")) el.value = form[k]||"";
   }
-  if (k==="budgetUndef"){ const b=$("#f_budget"); b.disabled=!!form.budgetUndef; }
+  if (k==="budgetUndef"){ $("#f_budget").disabled=!!form.budgetUndef; }
+  if (k==="noNight"){ $("#f_nightPushes").disabled=!!form.noNight; }
 }
 function syncAll(){ Object.keys(FIELDS).forEach(syncField); afterChange(true); }
 
@@ -501,7 +511,11 @@ let flashT;
 function onChip(b){
   const k=b.dataset.k, v=b.dataset.v, f=FIELDS[k];
   if (f.t==="single") form[k] = form[k]===v ? "" : v;
-  else if (f.t==="toggle") form[k] = !form[k];
+  else if (f.t==="toggle"){
+    form[k] = !form[k];
+    const dep = {noNight:"nightPushes", budgetUndef:"budget"}[k];
+    if (dep && form[k]){ form[dep]=""; syncField(dep); }
+  }
   else {
     let arr = (form[k]||[]).slice();
     if (arr.includes(v)) arr = arr.filter(x=>x!==v);
@@ -559,6 +573,7 @@ function collect(){
     if (!sel.includes(f.other)) delete v[f.k+"Other"];
   });
   if (v.budgetUndef) delete v.budget;
+  if (v.noNight) delete v.nightPushes;
   return v;
 }
 function save(){

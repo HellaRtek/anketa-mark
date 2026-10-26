@@ -1,10 +1,10 @@
 /* Анкета МАРК — офлайн-кэш. При обновлении приложения увеличьте номер версии. */
-const VERSION = "anketa-mark-v1";
+const VERSION = "anketa-mark-v2";
 const FONTS = "anketa-mark-fonts";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(CORE.map(u => new Request(u, {cache: "reload"})))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys()
