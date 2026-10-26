@@ -1,5 +1,5 @@
 /* Анкета МАРК — офлайн-кэш. При обновлении приложения увеличьте номер версии. */
-const VERSION = "anketa-mark-v4";
+const VERSION = "anketa-mark-v5";
 const FONTS = "anketa-mark-fonts";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
