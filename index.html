@@ -1182,7 +1182,7 @@ function renderExport(){
   const rs = scoped(), L = live();
   $("#scopeCount").textContent = "Попадёт в выгрузку: "+rs.length;
   const c = p=>L.filter(r=>r.v.priority===p).length;
-  $("#stats").innerHTML = [["Всего",L.length],["A",c("A")],["B",c("B")],["C",c("C")],["Сегодня",L.filter(r=>(r.v.date||isoOf(r.createdAt))===todayISO()).length],["Фермы",L.filter(r=>r.v.visitorType==="ферма").length],["Дилеры",L.filter(r=>r.v.visitorType===DEALER).length]].concat(mode==="file"?[["Без приоритета",L.filter(r=>!r.v.priority).length]]:[["В очереди",Object.values(records).filter(r=>r._pending).length]])
+  $("#stats").innerHTML = [["Всего",L.length],["A",c("A")],["B",c("B")],["C",c("C")],["Сегодня",L.filter(r=>(r.v.date||isoOf(r.createdAt))===todayISO()).length],["Фермы",L.filter(r=>r.v.visitorType==="ферма").length],["Дилеры",L.filter(r=>r.v.visitorType===DEALER).length]].concat(mode!=="cloud"?[["Без приоритета",L.filter(r=>!r.v.priority).length]]:[["В очереди",Object.values(records).filter(r=>r._pending).length]])
     .map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
   $("#mdText").textContent = buildMd(rs);
   const nPh = L.reduce((n,r)=>n+PHOTO_KEYS.filter(k=>r.v[k]).length,0);
@@ -1190,7 +1190,7 @@ function renderExport(){
   if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(e=>{ if(e && e.usage!=null) $("#storeUse").textContent = "Фото в анкетах: "+nPh+". Занято на планшете: "+mb(e.usage)+"."; }).catch(()=>{});
   $("#storeNote").textContent = (mode==="file" && window.__pwaReady ? "Приложение сохранено на планшете и открывается без интернета. " : "") + (mode==="cloud" && !noWrite
     ? "Анкеты сохраняются на планшете и отправляются в общую базу этой страницы. Все планшеты с этой ссылкой видят одни и те же анкеты."
-    : mode==="file"
+    : (mode==="file" || !SHARED_DB)
       ? "Анкеты хранятся только в браузере этого планшета. Делайте выгрузку или резервную копию в конце каждого дня."
       : "Общая база сейчас недоступна: анкеты сохраняются на планшете и будут отправлены, когда связь появится.");
 }
@@ -1222,7 +1222,8 @@ function renderStatus(){
     if (noWrite){ s="err"; t="Нет прав на запись в общую базу"; }
     else if (pend){ s="pending"; t="Ждут отправки: "+pend; }
     else { s="ok"; t="Общая база · всё отправлено"; }
-  } else if (mode==="local"){ s=pend?"pending":"local"; t = cloudErr || (pend ? "Без связи · на планшете: "+pend : "Только на этом планшете"); }
+  } else if (mode==="local" && !SHARED_DB){ s=localOk?"local":"err"; t=localOk?"Только на этом устройстве":"Хранилище браузера недоступно"; }
+  else if (mode==="local"){ s=pend?"pending":"local"; t = cloudErr || (pend ? "Без связи · на планшете: "+pend : "Только на этом планшете"); }
   const el=$("#status"); el.dataset.s=s; $("#statusText").textContent=t;
 }
 function renderAll(){
@@ -1272,8 +1273,14 @@ function subscribe(){
     if (e && (e.code==="unavailable"||e.code==="resource_exhausted")) setTimeout(()=>{ mode="cloud"; subscribe(); }, 30000);
   });
 }
+/* Shared base switched off: visitor data never leaves the device (27.10.2026) */
+const SHARED_DB = false;
 async function initCloud(){
   if (mode==="file"){ renderAll(); return; }
+  if (!SHARED_DB){
+    downloads = await dlPromise; mode="local"; cloudErr="";
+    Object.values(records).forEach(r=>{ r._pending=false; }); persist(); renderAll(); return;
+  }
   try{ db = await window.claude.use("db"); }catch(e){ db=null; }
   downloads = await dlPromise;
   if (!db){ mode="local"; cloudErr="Общая база недоступна · данные на планшете"; renderAll(); return; }
