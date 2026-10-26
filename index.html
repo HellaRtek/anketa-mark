@@ -257,7 +257,7 @@ details.prev pre{white-space:pre-wrap;word-break:break-word;font-family:var(--f-
     <div class="formgrid">
       <nav class="rail" id="rail" aria-label="Разделы анкеты"></nav>
       <div class="sections" id="sections">
-        <div class="installbar" id="installbar" hidden><div><b>Установите анкету на экран «Домой»</b><span>В Safari нажмите «Поделиться» → «На экран „Домой“» и дальше открывайте анкету только с этой иконки. Анкеты, введённые во вкладке Safari и в приложении с иконки, хранятся раздельно.</span></div><button class="btn sm" type="button" id="installHide">Понятно</button></div>
+        <div class="installbar" id="installbar" hidden><div><b>Установите анкету на экран «Домой»</b><span id="installText"></span></div><button class="btn sm primary" type="button" id="installBtn" hidden>Установить</button><button class="btn sm" type="button" id="installHide">Понятно</button></div>
         <div class="editbar" id="editbar" hidden>Редактирование анкеты <b id="editNo"></b><span style="flex:1"></span><button class="btn sm" id="cancelEdit" type="button">Отменить правку</button></div>
       </div>
     </div>
@@ -334,6 +334,7 @@ details.prev pre{white-space:pre-wrap;word-break:break-word;font-family:var(--f-
             <div class="field"><label for="setDevice">Код планшета</label><div class="inp"><input id="setDevice" maxlength="6" autocomplete="off"></div></div>
             <div class="field"><label for="setStaff">Сотрудник по умолчанию</label><div class="inp"><input id="setStaff" autocomplete="off"></div></div>
             <div class="field full"><label for="setEvent">Выставка</label><div class="inp"><input id="setEvent" autocomplete="off"></div></div>
+            <div class="field full"><span class="lbl" id="setPlatL">Устройство</span><div class="chips" id="setPlat" role="group" aria-labelledby="setPlatL"><button class="chip" type="button" data-pl="auto" aria-pressed="true">Автоматически</button><button class="chip" type="button" data-pl="apple" aria-pressed="false">Apple</button><button class="chip" type="button" data-pl="android" aria-pressed="false">Android</button></div><span class="hint" id="setPlatHint"></span></div>
           </div>
         </div>
       </div>
@@ -351,26 +352,13 @@ details.prev pre{white-space:pre-wrap;word-break:break-word;font-family:var(--f-
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="sheet-wrap" id="actSheet" hidden><div class="sheet" role="dialog" aria-labelledby="actTitle">
-  <h3 id="actTitle">Анкета сохранена</h3>
-  <div class="act" id="actMail" hidden>
-    <b>Письмо посетителю</b>
-    <div class="meta" id="actMailMeta"></div>
-    <div class="warn" id="actMailWarn" hidden></div>
-    <div class="row">
-      <button class="btn primary" type="button" id="actMailShare">Письмо с фото</button>
-      <button class="btn" type="button" id="actMailTo">Письмо без фото, адрес подставлен</button>
-    </div>
-    <div class="row">
-      <button class="btn sm" type="button" id="actCopyAddr">Скопировать адрес</button>
-      <button class="btn sm" type="button" id="actCopyBody">Скопировать текст письма</button>
-    </div>
-  </div>
-  <div class="act" id="actCal" hidden>
-    <b>Напоминание в календарь</b>
+  <h3 id="actTitle">Напоминание</h3>
+  <div class="act">
     <div class="meta" id="actCalMeta"></div>
+    <div class="meta" id="actCalNote"></div>
     <div class="row">
-      <button class="btn primary" type="button" id="actCalOpen">Добавить в календарь</button>
-      <button class="btn sm" type="button" id="actCalFile">Сохранить файл .ics</button>
+      <button class="btn primary" type="button" id="actCalOpen">Открыть календарь ещё раз</button>
+      <button class="btn" type="button" id="actCalFile">Сохранить файл .ics</button>
     </div>
   </div>
   <div class="foot"><button class="btn" type="button" id="actDone">Готово</button></div>
@@ -436,10 +424,9 @@ const SCHEMA = [
     {k:"formNoView", t:"ro", l:"№ анкеты", w:"third"},
     {k:"priority", t:"single", l:"Приоритет", w:"full", o:["A","B","C"], pri:true},
     {k:"agreed", t:"area", l:"Договорились", w:"full"},
-    {k:"owner", t:"text", l:"Ответственный", w:"half"},
-    {k:"deadline", t:"date", l:"Срок", w:"half"},
-    {k:"sendMail", t:"toggle", l:"Письмо посетителю", w:"half", o:["Отправить посетителю анкету с фото"]},
-    {k:"addReminder", t:"toggle", l:"Напоминание", w:"half", o:["Добавить напоминание в календарь"]}
+    {k:"owner", t:"text", l:"Ответственный", w:"third"},
+    {k:"deadline", t:"date", l:"Срок", w:"third"},
+    {k:"addReminder", t:"toggle", l:"Напоминание", w:"third", o:["Добавить напоминание в календарь"]}
   ]}
 ];
 const FIELDS = {}; SCHEMA.forEach(s=>s.fields.forEach(f=>{f.sec=s.id; FIELDS[f.k]=f;}));
@@ -679,113 +666,67 @@ function save(){
   persist(); flush();
   toast((editingId?"Изменения сохранены: ":"Анкета сохранена: ")+rec.formNo);
   resetForm();
-  if (rec.v.sendMail || rec.v.addReminder) openActions(rec);
+  if (rec.v.addReminder) remind(rec);
 }
 
-/* ---------- After save: letter to the visitor and calendar reminder ---------- */
+/* ---------- After save: calendar reminder ---------- */
 let actRec = null;
 const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
-function emailOf(v){ const m=String(v.contact||"").match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/); return m ? m[0] : ""; }
-function mailSubject(r){ return `МАРК — результаты анкетирования на выставке ${r.event||settings.event}`; }
-function mailBody(r){
-  const v=r.v, out=[];
-  out.push(v.fio ? `Здравствуйте, ${v.fio}!` : "Здравствуйте!");
-  out.push("");
-  out.push(`Спасибо, что посетили стенд МАРК на выставке ${r.event||settings.event}. Ниже — то, что мы записали во время разговора.`);
-  SCHEMA.forEach(s=>{
-    if (s.staff || s.photos) return;
-    const lines = s.fields.map(f=>{
-      const t=textVal(f,v); if(!t) return null;
-      if (f.t==="toggle") return "• "+f.o[0];
-      return "• "+f.l+": "+t.replace(/\n+/g," ")+(f.u?" "+f.u:"");
-    }).filter(Boolean);
-    if (!lines.length) return;
-    out.push(""); out.push(s.num+". "+s.title.toUpperCase()); out.push(...lines);
-  });
-  out.push(""); out.push("С уважением,"); out.push(v.staff || "команда МАРК");
-  return out.join("\n");
-}
+function detectPlatform(){ if (IOS) return "apple"; if (/Android/i.test(navigator.userAgent)) return "android"; return "other"; }
+function platform(){ const p=settings.platform||"auto"; return p==="auto" ? detectPlatform() : p; }
 function remDate(v){ return v.contactWhen; }
 function remTitle(v){ return "Связаться с " + [v.org, v.fio].filter(Boolean).join(" - "); }
-function icsEsc(t){ return String(t).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n"); }
+function remDesc(r){
+  const v=r.v;
+  return [`Анкета ${r.formNo}, ${r.event||settings.event}`, v.phone?`Телефон: ${v.phone}`:"", v.contact?`E-mail / мессенджер: ${v.contact}`:"", v.channel?`Канал: ${v.channel}`:"", (v.nextSteps||[]).length?`Что дальше: ${v.nextSteps.join(", ")}`:"", v.agreed?`Договорились: ${v.agreed}`:""].filter(Boolean).join("\n");
+}
+function icsEsc(t){ return String(t).replace(/\\/g,"\\\\").replace(/;/g,"\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n"); }
 function icsFold(line){ const out=[]; let cur="", n=0; for (const ch of line){ const c=ch.codePointAt(0), w=c<0x80?1:c<0x800?2:c<0x10000?3:4; if (n+w>73){ out.push(cur); cur=" "+ch; n=1+w; } else { cur+=ch; n+=w; } } out.push(cur); return out.join("\r\n"); }
 function buildIcs(r){
   const v=r.v, d=remDate(v).replace(/-/g,""), now=new Date();
-  const stamp = now.getUTCFullYear()+pad(now.getUTCMonth()+1)+pad(now.getUTCDate())+"T"+pad(now.getUTCHours())+pad(now.getUTCMinutes())+pad(now.getUTCSeconds())+"Z";
-  const desc = [`Анкета ${r.formNo}, ${r.event||settings.event}`, v.phone?`Телефон: ${v.phone}`:"", v.contact?`E-mail / мессенджер: ${v.contact}`:"", v.channel?`Канал: ${v.channel}`:"", (v.nextSteps||[]).length?`Что дальше: ${v.nextSteps.join(", ")}`:"", v.agreed?`Договорились: ${v.agreed}`:""].filter(Boolean).join("\n");
+  const st = now.getUTCFullYear()+pad(now.getUTCMonth()+1)+pad(now.getUTCDate())+"T"+pad(now.getUTCHours())+pad(now.getUTCMinutes())+pad(now.getUTCSeconds())+"Z";
   const L = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//MARK//Anketa//RU","CALSCALE:GREGORIAN","METHOD:PUBLISH","BEGIN:VEVENT",
-    "UID:"+r.id+"-reminder@anketa-mark","DTSTAMP:"+stamp,"DTSTART:"+d+"T090000","DTEND:"+d+"T093000",
-    "SUMMARY:"+icsEsc(remTitle(v)),"DESCRIPTION:"+icsEsc(desc),
+    "UID:"+r.id+"-reminder@anketa-mark","DTSTAMP:"+st,"DTSTART:"+d+"T090000","DTEND:"+d+"T093000",
+    "SUMMARY:"+icsEsc(remTitle(v)),"DESCRIPTION:"+icsEsc(remDesc(r)),
     "BEGIN:VALARM","ACTION:DISPLAY","TRIGGER:PT0M","DESCRIPTION:"+icsEsc(remTitle(v)),"END:VALARM",
     "END:VEVENT","END:VCALENDAR"];
   return L.map(icsFold).join("\r\n")+"\r\n";
 }
+function gcalUrl(r){
+  const v=r.v, d=remDate(v).replace(/-/g,"");
+  return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent(remTitle(v))+"&dates="+d+"T090000/"+d+"T093000&details="+encodeURIComponent(remDesc(r));
+}
+function openNew(url){ const a=document.createElement("a"); a.href=url; a.target="_blank"; a.rel="noopener"; document.body.appendChild(a); a.click(); a.remove(); }
 function icsName(r){ return latin(r.formNo)+"_napominanie.ics"; }
-function markDone(btn){ btn.classList.add("done"); if(!btn.dataset.t) btn.dataset.t=btn.textContent; btn.textContent="✓ "+btn.dataset.t; }
-function copyText(t, okMsg){ if(!navigator.clipboard){ toast("Копирование недоступно — текст письма есть в «Скопировать текст письма»", true); return; } navigator.clipboard.writeText(t).then(()=>toast(okMsg)).catch(()=>toast("Не удалось скопировать", true)); }
-async function openActions(r){
-  actRec = r; const v=r.v;
-  $("#actTitle").textContent = "Анкета "+r.formNo+" сохранена";
-  ["actMailShare","actMailTo","actCopyAddr","actCopyBody","actCalOpen","actCalFile"].forEach(id=>{ const b=document.getElementById(id); if(b.dataset.t){ b.textContent=b.dataset.t; } b.classList.remove("done"); });
-  $("#actMail").hidden = !v.sendMail; $("#actCal").hidden = !v.addReminder;
-  if (v.sendMail){
-    const addr=emailOf(v), warn=[];
-    $("#actMailMeta").innerHTML = `Кому: <strong>${esc(addr||"адрес не найден")}</strong><br>Тема: ${esc(mailSubject(r))}`;
-    if (!addr) warn.push("В поле «E-mail / мессенджер» нет адреса почты — впишите его в письме вручную.");
-    const hasPhoto = !!(v.photoClient && await PDB.get(v.photoClient).catch(()=>null));
-    $("#actMailShare").hidden = !hasPhoto;
-    if (!hasPhoto) warn.push("Фото с посетителем нет — письмо уйдёт без вложения.");
-    else if (IOS && mode==="file") warn.push("«Письмо с фото»: выберите «Почта» в меню, адрес вставьте в поле «Кому» — приложение скопирует его само. «Без фото» — адрес подставится, но без вложения.");
-    $("#actCopyAddr").hidden = !addr;
-    $("#actMailWarn").textContent = warn.join(" "); $("#actMailWarn").hidden = !warn.length;
+/* Opens the calendar the way this device supports; must run inside the tap that saved the anketa */
+function openCalendar(r){
+  const pf = mode!=="file" ? "web" : platform();
+  if (pf==="android" || pf==="web"){ openNew(gcalUrl(r)); return pf; }
+  if (pf==="apple"){
+    const url=URL.createObjectURL(new Blob([buildIcs(r)],{type:"text/calendar;charset=utf-8"}));
+    openNew(url); setTimeout(()=>URL.revokeObjectURL(url), 60000); return pf;
   }
-  if (v.addReminder){
-    $("#actCalMeta").innerHTML = `<strong>${esc(ruDate(remDate(v)))}, 9:00</strong> · ${esc(remTitle(v))}`;
-  }
-  $("#actSheet").hidden=false;
+  saveFile(icsName(r), buildIcs(r), "text/calendar;charset=utf-8"); return pf;
+}
+function remind(r){
+  actRec = r;
+  const pf = openCalendar(r);
+  $("#actTitle").textContent = "Напоминание · анкета "+r.formNo;
+  $("#actCalMeta").innerHTML = `<strong>${esc(ruDate(remDate(r.v)))}, 9:00</strong> · ${esc(remTitle(r.v))}`;
+  const notes = {
+    apple: "iPad должен предложить добавить событие в «Календарь» с оповещением в 9:00. Если этого не случилось, нажмите «Сохранить файл .ics» и откройте файл в приложении «Файлы» — iPad предложит добавить событие.",
+    android: "Открыт Google Календарь с заполненным событием — нажмите в нём «Сохранить». Нужен интернет. Без интернета сохраните файл .ics: его открывает, например, календарь Samsung. Оповещение календарь поставит по своим настройкам.",
+    web: "Открыт Google Календарь с заполненным событием — нажмите в нём «Сохранить».",
+    other: "Файл .ics сохранён — откройте его, чтобы добавить событие в календарь."
+  };
+  $("#actCalNote").textContent = notes[pf] || notes.other;
+  $("#actCalOpen").hidden = pf==="other";
+  $("#actCalFile").hidden = pf==="web" || pf==="other";
+  $("#actSheet").hidden = false;
 }
 $("#actDone").addEventListener("click", ()=>{ $("#actSheet").hidden=true; actRec=null; });
-$("#actCopyAddr").addEventListener("click", e=>{ if(!actRec) return; copyText(emailOf(actRec.v), "Адрес скопирован"); markDone(e.currentTarget); });
-$("#actCopyBody").addEventListener("click", e=>{ if(!actRec) return; copyText(mailBody(actRec), "Текст письма скопирован"); markDone(e.currentTarget); });
-$("#actMailTo").addEventListener("click", e=>{
-  if(!actRec) return;
-  const url = "mailto:"+encodeURIComponent(emailOf(actRec.v)).replace(/%40/g,"@")+"?subject="+encodeURIComponent(mailSubject(actRec))+"&body="+encodeURIComponent(mailBody(actRec));
-  const a=document.createElement("a"); a.href=url; document.body.appendChild(a); a.click(); a.remove();
-  markDone(e.currentTarget);
-});
-let actPhotoFile = null;
-$("#actMailShare").addEventListener("click", e=>{
-  if(!actRec) return;
-  const btn=e.currentTarget, r=actRec, addr=emailOf(r.v);
-  if (!actPhotoFile || actPhotoFile.rid!==r.id){ toast("Фото ещё готовится — нажмите ещё раз через секунду"); return; }
-  const data = {files:[actPhotoFile.file], title:mailSubject(r), text:mailBody(r)};
-  if (!(navigator.canShare && navigator.canShare(data))){ toast("Это устройство не умеет прикладывать фото. Используйте «Письмо без фото».", true); return; }
-  if (addr && navigator.clipboard) navigator.clipboard.writeText(addr).catch(()=>{});
-  navigator.share(data).then(()=>{ markDone(btn); }).catch(err=>{ if(!(err&&err.name==="AbortError")) toast("Не удалось открыть меню «Поделиться»: "+((err&&err.message)||"ошибка"), true); });
-});
-/* the photo File is prepared in advance so the tap can open the share sheet immediately */
-const _openActions = openActions;
-openActions = async function(r){
-  actPhotoFile = null;
-  await _openActions(r);
-  if (r.v.sendMail && r.v.photoClient){
-    const p = await PDB.get(r.v.photoClient).catch(()=>null);
-    if (p) actPhotoFile = {rid:r.id, file:new File([p.buf], latin(r.formNo)+"_foto.jpg", {type:"image/jpeg"})};
-  }
-};
-function openIcs(r, asFile){
-  const ics=buildIcs(r), name=icsName(r);
-  if (!asFile && IOS){
-    const url=URL.createObjectURL(new Blob([ics],{type:"text/calendar;charset=utf-8"}));
-    const a=document.createElement("a"); a.href=url; a.target="_blank"; a.rel="noopener"; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 60000);
-    return;
-  }
-  if (mode!=="file"){ toast("В этом окне календарь недоступен — откройте приложение на iPad", true); return; }
-  saveFile(name, ics, "text/calendar;charset=utf-8");
-}
-$("#actCalOpen").addEventListener("click", e=>{ if(!actRec) return; openIcs(actRec, false); markDone(e.currentTarget); });
-$("#actCalFile").addEventListener("click", e=>{ if(!actRec) return; openIcs(actRec, true); markDone(e.currentTarget); });
+$("#actCalOpen").addEventListener("click", ()=>{ if(actRec) openCalendar(actRec); });
+$("#actCalFile").addEventListener("click", ()=>{ if(actRec) saveFile(icsName(actRec), buildIcs(actRec), "text/calendar;charset=utf-8"); });
 function resetForm(){
   form = blankForm(); editingId=null; armedDel=false;
   $("#editbar").hidden = true; $("#delBtn").hidden = true;
@@ -1265,6 +1206,13 @@ function renderExport(){
   });
 });
 
+function renderPlat(){
+  const cur=settings.platform||"auto", names={apple:"Apple (iPad)", android:"Android", other:"компьютер"};
+  document.querySelectorAll("#setPlat .chip").forEach(c=>c.setAttribute("aria-pressed", c.dataset.pl===cur?"true":"false"));
+  $("#setPlatHint").textContent = "Определено автоматически: "+names[detectPlatform()]+". От устройства зависит, как добавляется напоминание в календарь.";
+}
+$("#setPlat").addEventListener("click", e=>{ const b=e.target.closest(".chip"); if(!b) return; settings.platform=b.dataset.pl; LS.set(K_SET,settings); renderPlat(); });
+
 /* ---------- Status / sync ---------- */
 function renderStatus(){
   const pend = Object.values(records).filter(r=>r._pending).length;
@@ -1356,10 +1304,11 @@ if (editingId){ const r=records[editingId]; $("#editbar").hidden=false; $("#edit
     let touched=false;
     if (r.v.visitorType==="ферму"){ r.v.visitorType="ферма"; touched=true; }
     if ("consent" in r.v){ delete r.v.consent; touched=true; }
+    if ("sendMail" in r.v){ delete r.v.sendMail; touched=true; }
     if (touched){ r.updatedAt=now; r._pending=true; changed=true; }
   });
   if (form.visitorType==="ферму") form.visitorType="ферма";
-  delete form.consent;
+  delete form.consent; delete form.sendMail;
   if (changed) persist();
 })();
 syncAll(); renderAll(); updateRail();
@@ -1367,12 +1316,25 @@ initCloud();
 setTimeout(gcPhotos, 3000);
 if (mode==="file"){
   try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
-  const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
   const standalone = navigator.standalone===true || matchMedia("(display-mode: standalone)").matches;
-  if (iOS && !standalone && location.protocol.startsWith("http") && !LS.get("markSurvey.installHint", false)) $("#installbar").hidden=false;
+  const pf = detectPlatform(), web = location.protocol.startsWith("http");
+  const texts = {
+    apple: "В Safari нажмите «Поделиться» → «На экран „Домой“» и дальше открывайте анкету только с этой иконки. Анкеты, введённые во вкладке Safari и в приложении с иконки, хранятся раздельно.",
+    android: "В Chrome откройте меню ⋮ → «Установить приложение» (или «Добавить на главный экран») и дальше открывайте анкету с иконки — так она работает без интернета."
+  };
+  if (texts[pf] && !standalone && web && !LS.get("markSurvey.installHint", false)){ $("#installText").textContent=texts[pf]; $("#installbar").hidden=false; }
+  let deferredInstall=null;
+  window.addEventListener("beforeinstallprompt", e=>{
+    e.preventDefault(); deferredInstall=e;
+    if (!texts[pf]) $("#installText").textContent = "Установите анкету как приложение, чтобы она открывалась без интернета.";
+    $("#installBtn").hidden=false; if (!LS.get("markSurvey.installHint", false)) $("#installbar").hidden=false;
+  });
+  $("#installBtn").addEventListener("click", ()=>{ if(!deferredInstall) return; deferredInstall.prompt(); deferredInstall.userChoice.finally(()=>{ deferredInstall=null; $("#installBtn").hidden=true; }); });
+  window.addEventListener("appinstalled", ()=>{ $("#installbar").hidden=true; LS.set("markSurvey.installHint", true); toast("Анкета установлена — открывайте её с иконки"); });
   $("#installHide").addEventListener("click", ()=>{ $("#installbar").hidden=true; LS.set("markSurvey.installHint", true); });
 }
-window.__markSurvey = {buildXlsx, buildMd, buildCsv, scoped, records:()=>records, mailBody, buildIcs, mailSubject};
+renderPlat();
+window.__markSurvey = {buildXlsx, buildMd, buildCsv, scoped, records:()=>records, buildIcs, gcalUrl, platform};
 })();
 </script>
 <script>
