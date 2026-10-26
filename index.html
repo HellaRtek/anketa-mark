@@ -265,7 +265,6 @@ details.prev pre{white-space:pre-wrap;word-break:break-word;font-family:var(--f-
               <button class="chip" type="button" data-sc="today" aria-pressed="false">За сегодня</button>
               <button class="chip" type="button" data-sc="A" aria-pressed="false">Приоритет A</button>
               <button class="chip" type="button" data-sc="AB" aria-pressed="false">A и B</button>
-              <button class="chip" type="button" data-sc="consent" aria-pressed="false">С согласием на контакт</button>
             </div>
             <span class="hint" id="scopeCount"></span>
           </div>
@@ -331,7 +330,7 @@ const SCHEMA = [
     {k:"position", t:"text", l:"Должность", w:"half"},
     {k:"phone", t:"tel", l:"Телефон", w:"half"},
     {k:"contact", t:"text", l:"E-mail / мессенджер", w:"half", im:"email"},
-    {k:"visitorType", t:"single", l:"Вы представляете", w:"full", o:["ферму","агрохолдинг",DEALER,"другое"], other:"другое"},
+    {k:"visitorType", t:"single", l:"Вы представляете", w:"full", o:["ферма","агрохолдинг",DEALER,"другое"], other:"другое"},
     {k:"role", t:"single", l:"Роль в выборе техники", w:"full", o:["принимаю решение","рекомендую","собираю информацию"]}
   ]},
   {id:"s2", num:"2", title:"Хозяйство и текущий процесс", dealerSkip:true, fields:[
@@ -362,8 +361,7 @@ const SCHEMA = [
   {id:"s4", num:"4", title:"Следующий шаг", fields:[
     {k:"nextSteps", t:"multi", l:"Что дальше", w:"full", o:["прислать материалы / цену","техническая консультация","обследование фермы","обсудить демонстрацию / пилот","обсудить дилерство / сервис","пока без продолжения"], excl:"пока без продолжения"},
     {k:"contactWhen", t:"text", l:"Когда удобно связаться", w:"half"},
-    {k:"channel", t:"single", l:"Канал", w:"half", o:["звонок","e-mail","мессенджер"]},
-    {k:"consent", t:"single", l:"Разрешаете связаться с вами по этому запросу?", w:"full", o:["да","нет"]}
+    {k:"channel", t:"single", l:"Канал", w:"half", o:["звонок","e-mail","мессенджер"]}
   ]},
   {id:"s5", num:"★", title:"Для сотрудника стенда", staff:true, fields:[
     {k:"date", t:"date", l:"Дата", w:"third"},
@@ -494,8 +492,7 @@ function afterChange(skipDraft){
     }
   });
   $("#barNo").textContent = editingId ? (records[editingId]||{}).formNo : previewNo();
-  const warn = (form.consent==="нет") ? " · нет согласия на контакт" : "";
-  $("#barFill").textContent = (total ? `Заполнено полей: ${total}` : "Анкета пустая") + warn;
+  $("#barFill").textContent = total ? `Заполнено полей: ${total}` : "Анкета пустая";
   if (!skipDraft) saveDraft();
 }
 
@@ -678,7 +675,6 @@ function scoped(){
   if (scope==="today") rs = rs.filter(r=>(r.v.date||isoOf(r.createdAt))===t);
   if (scope==="A") rs = rs.filter(r=>r.v.priority==="A");
   if (scope==="AB") rs = rs.filter(r=>r.v.priority==="A"||r.v.priority==="B");
-  if (scope==="consent") rs = rs.filter(r=>r.v.consent==="да");
   return rs;
 }
 function isoOf(ts){ const d=new Date(ts); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
@@ -876,7 +872,7 @@ function renderExport(){
   const rs = scoped(), L = live();
   $("#scopeCount").textContent = "Попадёт в выгрузку: "+rs.length;
   const c = p=>L.filter(r=>r.v.priority===p).length;
-  $("#stats").innerHTML = [["Всего",L.length],["A",c("A")],["B",c("B")],["C",c("C")],["Сегодня",L.filter(r=>(r.v.date||isoOf(r.createdAt))===todayISO()).length],["Согласие",L.filter(r=>r.v.consent==="да").length],["Дилеры",L.filter(r=>r.v.visitorType===DEALER).length]].concat(mode==="file"?[["Без согласия",L.filter(r=>r.v.consent==="нет").length]]:[["В очереди",Object.values(records).filter(r=>r._pending).length]])
+  $("#stats").innerHTML = [["Всего",L.length],["A",c("A")],["B",c("B")],["C",c("C")],["Сегодня",L.filter(r=>(r.v.date||isoOf(r.createdAt))===todayISO()).length],["Фермы",L.filter(r=>r.v.visitorType==="ферма").length],["Дилеры",L.filter(r=>r.v.visitorType===DEALER).length]].concat(mode==="file"?[["Без приоритета",L.filter(r=>!r.v.priority).length]]:[["В очереди",Object.values(records).filter(r=>r._pending).length]])
     .map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
   $("#mdText").textContent = buildMd(rs);
   $("#storeNote").textContent = (mode==="file" && window.__pwaReady ? "Приложение сохранено на планшете и открывается без интернета. " : "") + (mode==="cloud" && !noWrite
@@ -980,6 +976,20 @@ const d = LS.get(K_DRAFT, null);
 if (d && d.form){ form = d.form; editingId = d.editingId && records[d.editingId] ? d.editingId : null; if(!form.date) form.date=todayISO(); }
 else form = blankForm();
 if (editingId){ const r=records[editingId]; $("#editbar").hidden=false; $("#editNo").textContent=r.formNo; $("#delBtn").hidden=false; $("#saveBtn").textContent="Сохранить изменения"; $("#clearBtn").textContent="Закрыть без сохранения"; }
+/* Migration: earlier versions stored "ферму" and a consent answer */
+(function migrate(){
+  let changed=false; const now=Date.now();
+  Object.values(records).forEach(r=>{
+    if (!r || !r.v) return;
+    let touched=false;
+    if (r.v.visitorType==="ферму"){ r.v.visitorType="ферма"; touched=true; }
+    if ("consent" in r.v){ delete r.v.consent; touched=true; }
+    if (touched){ r.updatedAt=now; r._pending=true; changed=true; }
+  });
+  if (form.visitorType==="ферму") form.visitorType="ферма";
+  delete form.consent;
+  if (changed) persist();
+})();
 syncAll(); renderAll(); updateRail();
 initCloud();
 if (mode==="file"){
