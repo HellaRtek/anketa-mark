@@ -1,0 +1,985 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Анкета МАРК">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+</head><body>
+<title>Анкета МАРК</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky top bar with three views (Анкета / Список / Выгрузка); form = section rail + one column of numbered section sheets; fixed action bar at the thumb. */
+:root{
+  --paper:#eef1f5; --surface:#ffffff; --field:#f8f9fb; --ink:#141c28; --muted:#5a6575; --line:#d5dbe4; --line-strong:#b8c1ce;
+  --accent:#1d4ed8; --accent-ink:#ffffff; --accent-soft:#e3eafc; --straw:#d9a520; --straw-soft:#fbf1d6;
+  --ok:#1b7a4b; --ok-soft:#e1f3e9; --warn:#a96200; --warn-soft:#fbeedb; --bad:#b4332a; --bad-soft:#fbe5e2;
+  --shadow:0 1px 2px rgba(20,28,40,.06),0 6px 24px rgba(20,28,40,.06);
+  --f-display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0d121a; --surface:#151c27; --field:#1b2330; --ink:#e6ebf2; --muted:#97a2b2; --line:#2a3443; --line-strong:#3b4759;
+  --accent:#6d90ff; --accent-ink:#0a1020; --accent-soft:#1b2849; --straw:#e3b443; --straw-soft:#3a2f12;
+  --ok:#4cc488; --ok-soft:#143326; --warn:#f0a648; --warn-soft:#3a2a12; --bad:#ff7a6e; --bad-soft:#3d1a17;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.25); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#0d121a; --surface:#151c27; --field:#1b2330; --ink:#e6ebf2; --muted:#97a2b2; --line:#2a3443; --line-strong:#3b4759;
+  --accent:#6d90ff; --accent-ink:#0a1020; --accent-soft:#1b2849; --straw:#e3b443; --straw-soft:#3a2f12;
+  --ok:#4cc488; --ok-soft:#143326; --warn:#f0a648; --warn-soft:#3a2a12; --bad:#ff7a6e; --bad-soft:#3d1a17;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.25); color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0}
+html,body{background:var(--paper)}
+body{color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+button,input,textarea{font:inherit;color:inherit}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+
+/* Top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1200px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px;display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand b{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:.04em}
+.brand span{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tabs{display:flex;gap:4px;background:var(--field);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tab{border:0;background:transparent;border-radius:9px;min-height:42px;padding:0 16px;font-weight:600;font-size:15px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:8px}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.tab .n{font-family:var(--f-mono);font-size:12px;background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:1px 6px}
+.status{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 12px 6px 10px;background:var(--field)}
+.status i{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.status[data-s="ok"] i{background:var(--ok)}
+.status[data-s="pending"] i{background:var(--warn)}
+.status[data-s="local"] i{background:var(--straw)}
+.status[data-s="err"] i{background:var(--bad)}
+
+.wrap{max-width:1200px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 140px}
+.view[hidden]{display:none!important}
+
+/* Form view */
+.formgrid{display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start}
+.rail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 86px);display:flex;flex-direction:column;gap:4px}
+.rail a{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--muted);padding:10px 12px;border-radius:10px;font-weight:500;font-size:14.5px;min-height:44px}
+.rail a:hover{background:var(--surface)}
+.rail a.cur{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.rail .num{font-family:var(--f-display);font-size:12px;font-weight:700;width:26px;height:26px;border-radius:7px;border:1.5px solid var(--line-strong);display:grid;place-items:center;flex:none}
+.rail a.done .num{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.rail a.skip{opacity:.55}
+.rail .cnt{margin-left:auto;font-family:var(--f-mono);font-size:11.5px}
+.sections{display:flex;flex-direction:column;gap:18px;min-width:0}
+.editbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--straw-soft);border:1px solid var(--straw);border-radius:12px;padding:12px 16px;font-weight:500}
+.editbar b{font-family:var(--f-mono)}
+.installbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:14px 16px}
+.installbar>div{flex:1;min-width:220px;display:flex;flex-direction:column;gap:4px}
+.installbar span{font-size:14.5px;color:var(--muted)}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px 24px;scroll-margin-top:calc(env(safe-area-inset-top,0px) + 90px)}
+.sec-h{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.sec-h .num{font-family:var(--f-display);font-weight:700;font-size:15px;width:36px;height:36px;border-radius:9px;background:var(--ink);color:var(--surface);display:grid;place-items:center;flex:none}
+.sec-h h2{margin:0;font-family:var(--f-display);font-weight:500;font-size:17px;letter-spacing:.02em;text-transform:uppercase;text-wrap:balance}
+.sec-h .cnt{margin-left:auto;font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.sec.staff .sec-h .num{background:var(--straw);color:#1f1a0c}
+.skipnote{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--accent-soft);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:15px}
+.sec.collapsed .fields{display:none}
+.fields{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:18px 16px}
+.field{grid-column:span 6;display:flex;flex-direction:column;gap:8px;min-width:0}
+.w-half{grid-column:span 3}.w-third{grid-column:span 2}
+.field>label,.field>.lbl{font-size:14px;font-weight:500;color:var(--muted)}
+.lbl small{font-weight:400}
+.inp{position:relative}
+.inp input,.field textarea{width:100%;min-height:52px;border:1.5px solid var(--line);background:var(--field);border-radius:11px;padding:12px 14px;font-size:17px;outline:none;transition:border-color .12s,background .12s}
+.field textarea{min-height:88px;resize:vertical;line-height:1.4}
+.inp input:focus,.field textarea:focus{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px var(--accent-soft)}
+.inp input:disabled{opacity:.45}
+.inp .unit{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none}
+.inp.has-unit input{padding-right:70px}
+.inp input.num{font-family:var(--f-mono);font-size:17px}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{min-height:50px;padding:0 18px;border-radius:11px;border:1.5px solid var(--line-strong);background:var(--surface);font-size:16px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-align:left;line-height:1.2;transition:background .1s,border-color .1s,transform .06s}
+.chip:active{transform:scale(.97)}
+.chip[data-m]::before{content:"";width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line-strong);flex:none;background:var(--field)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip[data-m][aria-pressed="true"]::before{border-color:var(--accent-ink);background:var(--accent-ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%231d4ed8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/14px no-repeat}
+.chip:disabled{opacity:.4;cursor:not-allowed}
+.chip.pri{min-width:76px;justify-content:center;font-family:var(--f-display);font-weight:700;font-size:18px}
+.other{margin-top:10px}
+.hint{font-size:13px;color:var(--muted)}
+.hint.flash{color:var(--warn);font-weight:600}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.chip:focus-visible{outline-offset:3px}
+
+/* Action bar */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -6px 24px rgba(20,28,40,.07)}
+.bar-in{max-width:1200px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bar .info{flex:1;min-width:160px;display:flex;flex-direction:column;line-height:1.25}
+.bar .info b{font-family:var(--f-mono);font-size:15px}
+.bar .info span{font-size:13px;color:var(--muted)}
+.btn{min-height:52px;padding:0 22px;border-radius:12px;border:1.5px solid var(--line-strong);background:var(--surface);font-weight:600;font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);min-width:200px;font-size:17px}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.danger.armed{background:var(--bad);color:#fff}
+.btn.sm{min-height:42px;padding:0 14px;font-size:14.5px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(10px);opacity:0;pointer-events:none;background:var(--ink);color:var(--surface);padding:12px 18px;border-radius:12px;font-weight:500;z-index:40;transition:opacity .18s,transform .18s;max-width:calc(100% - 32px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--bad);color:#fff}
+
+/* List view */
+.listhead{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.search{flex:1;min-width:220px}
+.search input{width:100%;min-height:50px;border:1.5px solid var(--line);background:var(--surface);border-radius:11px;padding:0 14px;font-size:16px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.tablebox{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:860px}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;font-size:15px}
+th{font-size:12.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;background:var(--field);position:sticky;top:0}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--field)}
+tbody tr:last-child td{border-bottom:0}
+td.no{font-family:var(--f-mono);font-size:14px;white-space:nowrap}
+td .sub{color:var(--muted);font-size:13.5px}
+td.t{font-family:var(--f-mono);font-size:13px;color:var(--muted);white-space:nowrap}
+.pchip{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;font-family:var(--f-display);font-weight:700;font-size:14px;border:1.5px solid var(--line-strong);color:var(--muted)}
+.pchip.A{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.pchip.B{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.sync{font-size:12.5px;white-space:nowrap}
+.sync.p{color:var(--warn)}.sync.o{color:var(--ok)}
+.empty{padding:48px 24px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:18px;margin-bottom:6px}
+
+/* Export view */
+.exgrid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px}
+.card h3{margin:0 0 4px;font-family:var(--f-display);font-weight:500;font-size:15px;text-transform:uppercase;letter-spacing:.03em}
+.card p.d{margin:0 0 16px;color:var(--muted);font-size:14.5px;max-width:62ch}
+.stack{display:flex;flex-direction:column;gap:18px}
+.fmt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fmt button{min-height:84px;border-radius:13px;border:1.5px solid var(--line-strong);background:var(--field);text-align:left;padding:14px 16px;cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.fmt button b{font-size:16.5px}
+.fmt button span{font-size:13px;color:var(--muted)}
+.fmt button.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.fmt button.main span{color:var(--accent-ink);opacity:.85}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.stat{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--field)}
+.stat b{display:block;font-family:var(--f-mono);font-size:24px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12.5px;color:var(--muted)}
+.setgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.setgrid .field{grid-column:auto}
+.setgrid .field.full{grid-column:1/-1}
+details.prev{margin-top:16px}
+details.prev summary{cursor:pointer;font-weight:600;min-height:40px;display:flex;align-items:center}
+details.prev pre{white-space:pre-wrap;word-break:break-word;font-family:var(--f-mono);font-size:12.5px;background:var(--field);border:1px solid var(--line);border-radius:10px;padding:14px;max-height:420px;overflow:auto;margin:8px 0 0}
+.note{font-size:13.5px;color:var(--muted);margin-top:12px}
+.rowbtns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+
+@media (max-width:900px){
+  .formgrid{grid-template-columns:minmax(0,1fr)}
+  .rail{position:static;flex-direction:row;overflow-x:auto;gap:6px;padding-bottom:2px}
+  .rail a{flex:none;background:var(--surface);border:1px solid var(--line)}
+  .rail .cnt{display:none}
+  .exgrid{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .w-half,.w-third{grid-column:span 6}
+  .sec{padding:18px 16px 20px}
+  .status{margin-left:0}
+  .bar .btn.primary{flex:1;min-width:0}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .setgrid,.fmt{grid-template-columns:minmax(0,1fr)}
+  .brand span{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><b>МАРК</b><span id="evName">Анкета посетителя · ЮГАГРО-2026</span></div>
+    <nav class="tabs" role="tablist" aria-label="Разделы">
+      <button class="tab" role="tab" id="tab-form" aria-selected="true" data-view="form">Анкета</button>
+      <button class="tab" role="tab" id="tab-list" aria-selected="false" data-view="list">Список <span class="n" id="listCount">0</span></button>
+      <button class="tab" role="tab" id="tab-export" aria-selected="false" data-view="export">Выгрузка</button>
+    </nav>
+    <div class="status" id="status" data-s="wait" role="status"><i></i><span id="statusText">Подключение…</span></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- FORM -->
+  <section class="view" id="view-form" aria-labelledby="tab-form">
+    <div class="formgrid">
+      <nav class="rail" id="rail" aria-label="Разделы анкеты"></nav>
+      <div class="sections" id="sections">
+        <div class="installbar" id="installbar" hidden><div><b>Установите анкету на экран «Домой»</b><span>В Safari нажмите «Поделиться» → «На экран „Домой“» и дальше открывайте анкету только с этой иконки. Анкеты, введённые во вкладке Safari и в приложении с иконки, хранятся раздельно.</span></div><button class="btn sm" type="button" id="installHide">Понятно</button></div>
+        <div class="editbar" id="editbar" hidden>Редактирование анкеты <b id="editNo"></b><span style="flex:1"></span><button class="btn sm" id="cancelEdit" type="button">Отменить правку</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIST -->
+  <section class="view" id="view-list" aria-labelledby="tab-list" hidden>
+    <div class="listhead">
+      <div class="search"><input id="q" type="search" placeholder="Поиск: организация, ФИО, регион, телефон" autocomplete="off"></div>
+      <div class="chips" id="pfilter" role="group" aria-label="Фильтр по приоритету">
+        <button class="chip" type="button" data-p="" aria-pressed="true">Все</button>
+        <button class="chip" type="button" data-p="A" aria-pressed="false">A</button>
+        <button class="chip" type="button" data-p="B" aria-pressed="false">B</button>
+        <button class="chip" type="button" data-p="C" aria-pressed="false">C</button>
+        <button class="chip" type="button" data-p="-" aria-pressed="false">Без приоритета</button>
+      </div>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>№</th><th>Организация / ФИО</th><th>Регион</th><th>Тип</th><th>Пр.</th><th>Следующий шаг</th><th>Время</th><th>Статус</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="emptyList"><b>Анкет пока нет</b>Сохранённые анкеты появятся здесь. Нажмите строку, чтобы открыть анкету для правки.</div>
+    </div>
+  </section>
+
+  <!-- EXPORT -->
+  <section class="view" id="view-export" aria-labelledby="tab-export" hidden>
+    <div class="exgrid">
+      <div class="stack">
+        <div class="card">
+          <h3>Выгрузка анкет</h3>
+          <p class="d">Excel-файл: одна строка на посетителя, шапка закреплена, фильтры включены. Markdown: сводная таблица и карточка по каждому посетителю.</p>
+          <div class="field" style="margin-bottom:16px">
+            <span class="lbl">Что выгружать</span>
+            <div class="chips" id="scope" role="group" aria-label="Что выгружать">
+              <button class="chip" type="button" data-sc="all" aria-pressed="true">Все анкеты</button>
+              <button class="chip" type="button" data-sc="today" aria-pressed="false">За сегодня</button>
+              <button class="chip" type="button" data-sc="A" aria-pressed="false">Приоритет A</button>
+              <button class="chip" type="button" data-sc="AB" aria-pressed="false">A и B</button>
+              <button class="chip" type="button" data-sc="consent" aria-pressed="false">С согласием на контакт</button>
+            </div>
+            <span class="hint" id="scopeCount"></span>
+          </div>
+          <div class="fmt">
+            <button type="button" class="main" id="exXlsx"><b>Excel (.xlsx)</b><span>Для импорта в таблицу или CRM</span></button>
+            <button type="button" id="exMd"><b>Markdown (.md)</b><span>Сводка и карточки посетителей</span></button>
+            <button type="button" id="exCsv"><b>CSV (.csv)</b><span>Разделитель «;», UTF-8</span></button>
+            <button type="button" id="exMdCopy"><b>Скопировать Markdown</b><span>В буфер обмена, для письма или заметок</span></button>
+          </div>
+          <details class="prev" id="mdPrev"><summary>Предпросмотр Markdown</summary><pre id="mdText"></pre></details>
+        </div>
+        <div class="card">
+          <h3>Резервная копия</h3>
+          <p class="d">Полная копия всех анкет в JSON. Через неё можно перенести анкеты с планшета на планшет: загруженные анкеты объединяются с имеющимися, дубли не создаются.</p>
+          <div class="rowbtns">
+            <button class="btn" type="button" id="exJson">Сохранить копию (.json)</button>
+            <label class="btn" for="importFile" style="cursor:pointer">Загрузить копию…</label>
+            <input type="file" id="importFile" accept=".json,application/json" hidden>
+          </div>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="card">
+          <h3>Сводка</h3>
+          <p class="d" id="storeNote">Где хранятся данные — смотрите индикатор в шапке.</p>
+          <div class="stats" id="stats"></div>
+        </div>
+        <div class="card">
+          <h3>Настройки планшета</h3>
+          <p class="d">Код планшета входит в номер анкеты. На каждом планшете задайте свой код, чтобы номера не повторялись.</p>
+          <div class="setgrid">
+            <div class="field"><label for="setDevice">Код планшета</label><div class="inp"><input id="setDevice" maxlength="6" autocomplete="off"></div></div>
+            <div class="field"><label for="setStaff">Сотрудник по умолчанию</label><div class="inp"><input id="setStaff" autocomplete="off"></div></div>
+            <div class="field full"><label for="setEvent">Выставка</label><div class="inp"><input id="setEvent" autocomplete="off"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="bar" id="bar">
+  <div class="bar-in">
+    <div class="info"><b id="barNo">П1-001</b><span id="barFill">Заполнено 0 полей</span></div>
+    <button class="btn danger" type="button" id="delBtn" hidden>Удалить</button>
+    <button class="btn" type="button" id="clearBtn">Новая анкета</button>
+    <button class="btn primary" type="button" id="saveBtn">Сохранить анкету</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- Schema: mirrors the paper questionnaire ---------- */
+const DEALER = "дилер / интегратор";
+const SCHEMA = [
+  {id:"s1", num:"1", title:"Контакт и роль", fields:[
+    {k:"org", t:"text", l:"Организация / хозяйство", w:"full"},
+    {k:"region", t:"text", l:"Регион, населённый пункт", w:"full"},
+    {k:"fio", t:"text", l:"ФИО", w:"half", ac:"name"},
+    {k:"position", t:"text", l:"Должность", w:"half"},
+    {k:"phone", t:"tel", l:"Телефон", w:"half"},
+    {k:"contact", t:"text", l:"E-mail / мессенджер", w:"half", im:"email"},
+    {k:"visitorType", t:"single", l:"Вы представляете", w:"full", o:["ферму","агрохолдинг",DEALER,"другое"], other:"другое"},
+    {k:"role", t:"single", l:"Роль в выборе техники", w:"full", o:["принимаю решение","рекомендую","собираю информацию"]}
+  ]},
+  {id:"s2", num:"2", title:"Хозяйство и текущий процесс", dealerSkip:true, fields:[
+    {k:"cowsDairy", t:"num", l:"Дойных коров", w:"third", u:"гол."},
+    {k:"cattleTotal", t:"num", l:"Всего КРС", w:"third", u:"гол."},
+    {k:"sites", t:"num", l:"Площадок", w:"third"},
+    {k:"housing", t:"single", l:"Содержание", w:"full", o:["беспривязное","привязное","другое"], other:"другое"},
+    {k:"alleys", t:"num", l:"Кормовых проходов", w:"third", u:"шт."},
+    {k:"alleysLength", t:"num", l:"Общая длина", w:"third", u:"м", dec:true},
+    {k:"alleyWidth", t:"num", l:"Минимальная ширина", w:"third", u:"м", dec:true},
+    {k:"surface", t:"text", l:"Покрытие", w:"full"},
+    {k:"surfaceFeatures", t:"multi", l:"Особенности проходов", w:"full", o:["есть уклоны","есть пороги","переходы между дворами"]},
+    {k:"pushingNow", t:"multi", l:"Сейчас подталкиваем", w:"full", o:["вручную","трактором / погрузчиком","роботом","не подталкиваем"], excl:"не подталкиваем"},
+    {k:"equipment", t:"text", l:"Марка техники / робота", w:"half"},
+    {k:"pushesPerDay", t:"num", l:"Подталкиваний в сутки", w:"half"},
+    {k:"staffHours", t:"num", l:"Время персонала на подталкивание", w:"half", u:"ч/сутки", dec:true},
+    {k:"noNight", t:"toggle", l:"Ночью", w:"half", o:["ночью не подталкиваем"]}
+  ]},
+  {id:"s3", num:"3", title:"Задача и интерес к МАРК", dealerSkip:true, fields:[
+    {k:"priorities", t:"multi", l:"Что важно", lx:"до трёх пунктов", w:"full", max:3, o:["сократить ручной труд","обеспечить подталкивание ночью","соблюдать расписание","снизить использование трактора","улучшить доступность корма","заменить текущий робот","другое"], other:"другое"},
+    {k:"concern", t:"area", l:"Главное ограничение / сомнение", w:"full"},
+    {k:"timeline", t:"single", l:"Когда рассматриваете внедрение", w:"full", o:["до 3 мес.","3–6 мес.","позже","пока изучаем"]},
+    {k:"budget", t:"num", l:"Ориентир бюджета, если определён", w:"half", u:"руб.", money:true},
+    {k:"budgetUndef", t:"toggle", l:"Бюджет", w:"half", o:["пока не определён"]}
+  ]},
+  {id:"s4", num:"4", title:"Следующий шаг", fields:[
+    {k:"nextSteps", t:"multi", l:"Что дальше", w:"full", o:["прислать материалы / цену","техническая консультация","обследование фермы","обсудить демонстрацию / пилот","обсудить дилерство / сервис","пока без продолжения"], excl:"пока без продолжения"},
+    {k:"contactWhen", t:"text", l:"Когда удобно связаться", w:"half"},
+    {k:"channel", t:"single", l:"Канал", w:"half", o:["звонок","e-mail","мессенджер"]},
+    {k:"consent", t:"single", l:"Разрешаете связаться с вами по этому запросу?", w:"full", o:["да","нет"]}
+  ]},
+  {id:"s5", num:"★", title:"Для сотрудника стенда", staff:true, fields:[
+    {k:"date", t:"date", l:"Дата", w:"third"},
+    {k:"staff", t:"text", l:"Сотрудник", w:"third"},
+    {k:"formNoView", t:"ro", l:"№ анкеты", w:"third"},
+    {k:"priority", t:"single", l:"Приоритет", w:"full", o:["A","B","C"], pri:true},
+    {k:"agreed", t:"area", l:"Договорились", w:"full"},
+    {k:"owner", t:"text", l:"Ответственный", w:"half"},
+    {k:"deadline", t:"date", l:"Срок", w:"half"}
+  ]}
+];
+const FIELDS = {}; SCHEMA.forEach(s=>s.fields.forEach(f=>{f.sec=s.id; FIELDS[f.k]=f;}));
+
+/* ---------- Storage helpers (all guarded) ---------- */
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+};
+const K_REC="markSurvey.records.v1", K_DRAFT="markSurvey.draft.v1", K_SET="markSurvey.settings.v1";
+let settings = Object.assign({device:"П1", staff:"", event:"ЮГАГРО-2026"}, LS.get(K_SET, {}));
+let records = LS.get(K_REC, {}) || {};
+let localOk = LS.set(K_REC, records);
+let form = {}, editingId = null;
+let db = null, downloads = null, mode = (window.claude && window.claude.use) ? "connecting" : "file";
+let noWrite = false, flushing = false, cloudErr = "";
+const dlPromise = mode==="connecting" ? window.claude.use("downloads").catch(()=>null) : Promise.resolve(null);
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pad = (n,l=2)=>String(n).padStart(l,"0");
+const todayISO = ()=>{const d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());};
+const newId = ()=> "v"+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const live = ()=> Object.values(records).filter(r=>!r.deleted).sort((a,b)=>b.createdAt-a.createdAt);
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function persist(){ localOk = LS.set(K_REC, records); renderStatus(); }
+function saveDraft(){ LS.set(K_DRAFT, {form, editingId}); }
+
+/* ---------- Form rendering ---------- */
+function fieldHTML(f){
+  const id = "f_"+f.k, w = "w-"+f.w;
+  const lbl = esc(f.l) + (f.lx ? ' <small>· '+esc(f.lx)+'</small>' : '');
+  if (f.t==="single" || f.t==="multi" || f.t==="toggle"){
+    const m = f.t!=="single";
+    const chips = f.o.map(v=>`<button type="button" class="chip${f.pri?' pri':''}" data-k="${f.k}" data-v="${esc(v)}" ${m?'data-m':''} aria-pressed="false">${esc(v)}</button>`).join("");
+    const other = f.other ? `<div class="inp other" id="${id}_ow" hidden><input id="${id}_o" data-k="${f.k}Other" placeholder="Уточните" autocomplete="off" enterkeyhint="next"></div>` : "";
+    const hint = f.max ? `<span class="hint" id="${id}_h">Можно выбрать до ${f.max}</span>` : "";
+    return `<div class="field ${w}"><span class="lbl" id="${id}_l">${lbl}</span><div class="chips" role="group" aria-labelledby="${id}_l">${chips}</div>${other}${hint}</div>`;
+  }
+  if (f.t==="area") return `<div class="field ${w}"><label for="${id}">${lbl}</label><textarea id="${id}" data-k="${f.k}" rows="3"></textarea></div>`;
+  if (f.t==="ro") return `<div class="field ${w}"><label for="${id}">${lbl}</label><div class="inp"><input id="${id}" class="num" readonly tabindex="-1"></div></div>`;
+  let type="text", im="", extra="";
+  if (f.t==="tel"){ type="tel"; im='inputmode="tel"'; extra='autocomplete="tel"'; }
+  if (f.t==="date"){ type="date"; }
+  if (f.t==="num"){ im = f.dec ? 'inputmode="decimal"' : 'inputmode="numeric"'; }
+  if (f.im==="email") im='inputmode="email"';
+  if (f.ac) extra='autocomplete="'+f.ac+'"';
+  if (!extra) extra='autocomplete="off"';
+  const unit = f.u ? `<span class="unit">${esc(f.u)}</span>` : "";
+  return `<div class="field ${w}"><label for="${id}">${lbl}</label><div class="inp${f.u?' has-unit':''}"><input id="${id}" data-k="${f.k}" type="${type}" ${im} ${extra} enterkeyhint="next" class="${f.t==='num'?'num':''}" ${f.t==='text'?'autocapitalize="sentences"':''}></div></div>`;
+}
+function buildForm(){
+  const host = $("#sections"), rail = $("#rail");
+  SCHEMA.forEach(s=>{
+    const el = document.createElement("section");
+    el.className = "sec"+(s.staff?" staff":""); el.id = s.id;
+    el.innerHTML = `<div class="sec-h"><span class="num">${s.num}</span><h2>${esc(s.title)}</h2><span class="cnt" id="${s.id}_c"></span></div>`
+      + (s.dealerSkip ? `<div class="skipnote" id="${s.id}_skip" hidden><span>Посетитель — дилер / интегратор: раздел можно пропустить.</span><button class="btn sm" type="button" data-expand="${s.id}">Заполнить всё равно</button></div>` : "")
+      + `<div class="fields">${s.fields.map(fieldHTML).join("")}</div>`;
+    host.appendChild(el);
+    const a = document.createElement("a");
+    a.href = "#"+s.id; a.dataset.sec = s.id;
+    a.innerHTML = `<span class="num">${s.num}</span><span>${esc(s.staff?"Сотрудник":s.title)}</span><span class="cnt" id="${s.id}_rc"></span>`;
+    rail.appendChild(a);
+  });
+}
+function blankForm(){ return {date: todayISO(), staff: settings.staff || ""}; }
+
+function filled(f, v){
+  const x = v[f.k];
+  if (f.t==="multi") return Array.isArray(x) && x.length>0;
+  if (f.t==="toggle") return !!x;
+  if (f.t==="ro") return false;
+  return x!=null && String(x).trim()!=="";
+}
+function syncField(k){
+  const f = FIELDS[k]; if(!f) return;
+  const id = "f_"+k;
+  if (f.t==="single"||f.t==="multi"||f.t==="toggle"){
+    const cur = form[k];
+    const sel = f.t==="single" ? (cur?[cur]:[]) : f.t==="multi" ? (cur||[]) : (cur?[f.o[0]]:[]);
+    document.querySelectorAll(`.chip[data-k="${k}"]`).forEach(b=>{
+      const on = sel.includes(b.dataset.v);
+      b.setAttribute("aria-pressed", on?"true":"false");
+      if (f.max) b.disabled = !on && sel.length>=f.max;
+    });
+    if (f.other){
+      const w = document.getElementById(id+"_ow"), o = document.getElementById(id+"_o");
+      w.hidden = !sel.includes(f.other); o.value = form[k+"Other"]||"";
+    }
+    if (f.max){ const h=document.getElementById(id+"_h"); h.textContent = sel.length>=f.max ? `Выбрано ${sel.length} из ${f.max}` : `Можно выбрать до ${f.max}`; h.classList.remove("flash"); }
+  } else if (f.t==="ro"){
+    document.getElementById(id).value = editingId ? (records[editingId]||{}).formNo||"" : previewNo()+" (будет присвоен)";
+  } else {
+    const el = document.getElementById(id); if (el && el.value !== (form[k]||"")) el.value = form[k]||"";
+  }
+  if (k==="budgetUndef"){ const b=$("#f_budget"); b.disabled=!!form.budgetUndef; }
+}
+function syncAll(){ Object.keys(FIELDS).forEach(syncField); afterChange(true); }
+
+function isDealer(){ return form.visitorType===DEALER; }
+function afterChange(skipDraft){
+  const dealer = isDealer();
+  let total = 0;
+  SCHEMA.forEach(s=>{
+    const fs = s.fields.filter(f=>f.t!=="ro");
+    const n = fs.filter(f=>filled(f,form)).length; total += n;
+    const c = document.getElementById(s.id+"_c"); c.textContent = n+" / "+fs.length;
+    document.getElementById(s.id+"_rc").textContent = n ? n : "";
+    const a = document.querySelector(`.rail a[data-sec="${s.id}"]`);
+    a.classList.toggle("done", n>0);
+    if (s.dealerSkip){
+      const skip = dealer && !form["_x_"+s.id] && n===0;
+      document.getElementById(s.id+"_skip").hidden = !(dealer && !form["_x_"+s.id]);
+      document.getElementById(s.id).classList.toggle("collapsed", skip);
+      a.classList.toggle("skip", skip);
+    }
+  });
+  $("#barNo").textContent = editingId ? (records[editingId]||{}).formNo : previewNo();
+  const warn = (form.consent==="нет") ? " · нет согласия на контакт" : "";
+  $("#barFill").textContent = (total ? `Заполнено полей: ${total}` : "Анкета пустая") + warn;
+  if (!skipDraft) saveDraft();
+}
+
+/* ---------- Numbering ---------- */
+function nextSeq(){
+  let m = 0; Object.values(records).forEach(r=>{ if (r.device===settings.device && r.seq>m) m=r.seq; });
+  return m+1;
+}
+function previewNo(){ return settings.device + "-" + pad(nextSeq(),3); }
+
+/* ---------- Form events ---------- */
+let flashT;
+function onChip(b){
+  const k=b.dataset.k, v=b.dataset.v, f=FIELDS[k];
+  if (f.t==="single") form[k] = form[k]===v ? "" : v;
+  else if (f.t==="toggle") form[k] = !form[k];
+  else {
+    let arr = (form[k]||[]).slice();
+    if (arr.includes(v)) arr = arr.filter(x=>x!==v);
+    else if (f.excl && v===f.excl) arr=[v];
+    else { arr = arr.filter(x=>x!==f.excl); if (f.max && arr.length>=f.max) return; arr.push(v); }
+    form[k]=arr;
+  }
+  syncField(k); afterChange();
+}
+document.addEventListener("click", e=>{
+  const ex = e.target.closest("[data-expand]");
+  if (ex){ form["_x_"+ex.dataset.expand]=true; afterChange(); return; }
+  const b = e.target.closest(".chip[data-k]");
+  if (b && !b.disabled) onChip(b);
+});
+$("#sections").addEventListener("input", e=>{
+  const k = e.target.dataset.k; if(!k) return;
+  form[k] = e.target.value;
+  if (k==="staff"){ settings.staff = e.target.value; LS.set(K_SET, settings); $("#setStaff").value=settings.staff; }
+  afterChange();
+});
+$("#sections").addEventListener("keydown", e=>{
+  if (e.key!=="Enter" || e.target.tagName!=="INPUT") return;
+  e.preventDefault();
+  const all = [...document.querySelectorAll("#sections input:not([readonly]):not(:disabled), #sections textarea")].filter(x=>x.offsetParent);
+  const i = all.indexOf(e.target); if (i>=0 && all[i+1]) all[i+1].focus(); else e.target.blur();
+});
+
+/* Rail highlight */
+function updateRail(){
+  let cur = SCHEMA[0].id;
+  SCHEMA.forEach(s=>{ const el=document.getElementById(s.id); if (el.getBoundingClientRect().top < 160) cur=s.id; });
+  document.querySelectorAll(".rail a").forEach(a=>a.classList.toggle("cur", a.dataset.sec===cur));
+}
+window.addEventListener("scroll", updateRail, {passive:true});
+document.addEventListener("click", e=>{
+  const a = e.target.closest(".rail a"); if(!a) return;
+  e.preventDefault(); document.getElementById(a.dataset.sec).scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth", block:"start"});
+});
+
+/* ---------- Save / edit / delete ---------- */
+function collect(){
+  const v = {};
+  Object.keys(form).forEach(k=>{
+    if (k.startsWith("_")) return;
+    let x = form[k];
+    if (typeof x==="string") x = x.trim();
+    if (x==="" || x==null || x===false || (Array.isArray(x)&&!x.length)) return;
+    v[k]=x;
+  });
+  // drop "other" text when "другое" not chosen
+  Object.values(FIELDS).forEach(f=>{
+    if (!f.other) return;
+    const sel = f.t==="single" ? [v[f.k]] : (v[f.k]||[]);
+    if (!sel.includes(f.other)) delete v[f.k+"Other"];
+  });
+  if (v.budgetUndef) delete v.budget;
+  return v;
+}
+function save(){
+  const v = collect();
+  if (!(v.org||v.fio||v.phone||v.contact)){
+    toast("Заполните хотя бы организацию, ФИО или контакт", true);
+    document.getElementById("s1").scrollIntoView({behavior:"smooth"}); return;
+  }
+  const now = Date.now();
+  let rec;
+  if (editingId && records[editingId]){
+    rec = records[editingId]; rec.v = v; rec.updatedAt = now; rec._pending = true;
+  } else {
+    const seq = nextSeq();
+    rec = {id:newId(), seq, device:settings.device, formNo:settings.device+"-"+pad(seq,3), event:settings.event, createdAt:now, updatedAt:now, deleted:false, v, _pending:true};
+    records[rec.id]=rec;
+  }
+  persist(); flush();
+  toast((editingId?"Изменения сохранены: ":"Анкета сохранена: ")+rec.formNo);
+  resetForm();
+}
+function resetForm(){
+  form = blankForm(); editingId=null; armedDel=false;
+  $("#editbar").hidden = true; $("#delBtn").hidden = true;
+  $("#saveBtn").textContent = "Сохранить анкету"; $("#clearBtn").textContent="Новая анкета";
+  syncAll(); saveDraft(); renderAll();
+  window.scrollTo({top:0});
+}
+function openRecord(id){
+  const r = records[id]; if(!r) return;
+  editingId = id; form = clone(r.v);
+  SCHEMA.forEach(s=>{ if(s.dealerSkip) form["_x_"+s.id]=true; });
+  $("#editbar").hidden=false; $("#editNo").textContent=r.formNo;
+  $("#delBtn").hidden=false; $("#saveBtn").textContent="Сохранить изменения"; $("#clearBtn").textContent="Закрыть без сохранения";
+  syncAll(); saveDraft(); show("form"); window.scrollTo({top:0});
+}
+let clearArmed=false, clearT;
+$("#clearBtn").addEventListener("click", ()=>{
+  const dirty = Object.keys(collect()).some(k=>!["date","staff"].includes(k));
+  if (editingId || !dirty || clearArmed){ clearArmed=false; resetForm(); return; }
+  clearArmed=true; $("#clearBtn").textContent="Стереть введённое?";
+  clearTimeout(clearT); clearT=setTimeout(()=>{clearArmed=false; $("#clearBtn").textContent="Новая анкета";},3000);
+});
+$("#cancelEdit").addEventListener("click", resetForm);
+$("#saveBtn").addEventListener("click", save);
+let armedDel=false, delT;
+$("#delBtn").addEventListener("click", ()=>{
+  const b=$("#delBtn");
+  if(!armedDel){ armedDel=true; b.classList.add("armed"); b.textContent="Точно удалить?"; clearTimeout(delT); delT=setTimeout(()=>{armedDel=false;b.classList.remove("armed");b.textContent="Удалить";},3000); return; }
+  const r=records[editingId]; if(!r) return;
+  r.deleted=true; r.updatedAt=Date.now(); r._pending=true; persist(); flush();
+  b.classList.remove("armed"); b.textContent="Удалить";
+  toast("Анкета "+r.formNo+" удалена"); resetForm();
+});
+
+/* ---------- Views ---------- */
+function show(view){
+  ["form","list","export"].forEach(v=>{
+    $("#view-"+v).hidden = v!==view;
+    $("#tab-"+v).setAttribute("aria-selected", v===view?"true":"false");
+  });
+  $("#bar").hidden = view!=="form";
+  if (view==="export") renderExport();
+  if (view==="list") renderList();
+  window.scrollTo({top:0});
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>show(t.dataset.view)));
+
+let pf="";
+$("#pfilter").addEventListener("click", e=>{
+  const b=e.target.closest(".chip"); if(!b) return; pf=b.dataset.p;
+  $("#pfilter").querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed", c===b?"true":"false"));
+  renderList();
+});
+$("#q").addEventListener("input", renderList);
+function fmtTime(ts){ const d=new Date(ts); const t=pad(d.getHours())+":"+pad(d.getMinutes()); return (d.toDateString()===new Date().toDateString()) ? t : pad(d.getDate())+"."+pad(d.getMonth()+1)+" "+t; }
+function renderList(){
+  const q = $("#q").value.trim().toLowerCase();
+  let rs = live();
+  if (pf==="-") rs = rs.filter(r=>!r.v.priority); else if (pf) rs = rs.filter(r=>r.v.priority===pf);
+  if (q) rs = rs.filter(r=>[r.formNo,r.v.org,r.v.fio,r.v.region,r.v.phone,r.v.contact,r.v.position].join(" ").toLowerCase().includes(q));
+  $("#rows").innerHTML = rs.map(r=>{
+    const v=r.v, type = v.visitorType==="другое" && v.visitorTypeOther ? v.visitorTypeOther : (v.visitorType||"");
+    return `<tr data-id="${r.id}"><td class="no">${esc(r.formNo)}</td><td><div>${esc(v.org||"—")}</div><div class="sub">${esc([v.fio,v.position].filter(Boolean).join(", "))}</div></td><td>${esc(v.region||"")}</td><td>${esc(type)}</td><td>${v.priority?`<span class="pchip ${v.priority}">${v.priority}</span>`:""}</td><td>${esc((v.nextSteps||[]).join(", "))}</td><td class="t">${fmtTime(r.createdAt)}</td><td class="sync ${r._pending?'p':'o'}">${r._pending ? (mode==="cloud"?"ждёт отправки":"на планшете") : "в общей базе"}</td></tr>`;
+  }).join("");
+  $("#emptyList").hidden = rs.length>0;
+  if (!rs.length && live().length) $("#emptyList").innerHTML = "<b>Ничего не найдено</b>Измените поиск или фильтр.";
+  else $("#emptyList").innerHTML = "<b>Анкет пока нет</b>Сохранённые анкеты появятся здесь. Нажмите строку, чтобы открыть анкету для правки.";
+}
+$("#rows").addEventListener("click", e=>{ const tr=e.target.closest("tr[data-id]"); if(tr) openRecord(tr.dataset.id); });
+
+/* ---------- Export ---------- */
+let scope="all";
+$("#scope").addEventListener("click", e=>{
+  const b=e.target.closest(".chip"); if(!b) return; scope=b.dataset.sc;
+  $("#scope").querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed", c===b?"true":"false"));
+  renderExport();
+});
+function scoped(){
+  let rs = live().slice().sort((a,b)=>a.createdAt-b.createdAt);
+  const t = todayISO();
+  if (scope==="today") rs = rs.filter(r=>(r.v.date||isoOf(r.createdAt))===t);
+  if (scope==="A") rs = rs.filter(r=>r.v.priority==="A");
+  if (scope==="AB") rs = rs.filter(r=>r.v.priority==="A"||r.v.priority==="B");
+  if (scope==="consent") rs = rs.filter(r=>r.v.consent==="да");
+  return rs;
+}
+function isoOf(ts){ const d=new Date(ts); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function ruDate(iso){ if(!iso) return ""; const [y,m,d]=iso.split("-"); return d+"."+m+"."+y; }
+function ruDT(ts){ const d=new Date(ts); return pad(d.getDate())+"."+pad(d.getMonth()+1)+"."+d.getFullYear()+" "+pad(d.getHours())+":"+pad(d.getMinutes()); }
+
+function textVal(f, v){
+  const x = v[f.k];
+  if (x==null || x==="" || x===false) return "";
+  if (f.t==="toggle") return "да";
+  if (f.t==="multi"||f.t==="single"){
+    const arr = Array.isArray(x)?x:[x];
+    return arr.map(a => (f.other && a===f.other && v[f.k+"Other"]) ? f.other+": "+v[f.k+"Other"] : a).join("; ");
+  }
+  if (f.t==="date") return ruDate(x);
+  return String(x);
+}
+function numVal(raw){
+  if (raw==null||raw==="") return null;
+  const s = String(raw).replace(/\s/g,"").replace(",", ".");
+  return /^-?\d+(\.\d+)?$/.test(s) ? parseFloat(s) : null;
+}
+/* Column plan: meta first, then sections 1–4, then stand staff notes */
+function columns(){
+  const cols = [
+    {h:"№ анкеты", w:11, get:r=>r.formNo},
+    {h:"Дата", w:11, kind:"date", get:r=>r.v.date||isoOf(r.createdAt)},
+    {h:"Сотрудник", w:16, get:r=>r.v.staff||""},
+    {h:"Приоритет", w:10, get:r=>r.v.priority||""}
+  ];
+  SCHEMA.forEach(s=>{ if (s.staff) return; s.fields.forEach(f=>{
+    const h = f.l + (f.u ? ", "+f.u : "") + (f.k==="noNight" ? " не подталкиваем" : "") + (f.k==="budgetUndef" ? " не определён" : "");
+    const w = f.t==="area"||f.t==="multi" ? 34 : f.t==="num" ? 12 : 22;
+    cols.push({h, w, kind: f.t==="num"?"num":"text", get:r=> f.t==="num" ? (numVal(r.v[f.k])??(r.v[f.k]||"")) : textVal(f, r.v)});
+  });});
+  cols.push({h:"Договорились", w:34, get:r=>r.v.agreed||""});
+  cols.push({h:"Ответственный", w:18, get:r=>r.v.owner||""});
+  cols.push({h:"Срок", w:11, kind:"date", get:r=>r.v.deadline||""});
+  cols.push({h:"Выставка", w:14, get:r=>r.event||""});
+  cols.push({h:"Создано", w:16, kind:"dt", get:r=>r.createdAt});
+  cols.push({h:"Изменено", w:16, kind:"dt", get:r=>r.updatedAt});
+  return cols;
+}
+
+/* Minimal XLSX writer (stored ZIP + SpreadsheetML) — no external library, works offline */
+const CRC = (()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;} return t; })();
+function crc32(b){ let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c=CRC[(c^b[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function zip(files){
+  const enc=new TextEncoder(), parts=[], cen=[]; let off=0;
+  const d=new Date(), dt=((d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1))&0xFFFF, dd=(((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate())&0xFFFF;
+  files.forEach(([name,str])=>{
+    const nb=enc.encode(name), data=enc.encode(str), crc=crc32(data);
+    const h=new DataView(new ArrayBuffer(30));
+    h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,0,true);h.setUint16(10,dt,true);h.setUint16(12,dd,true);
+    h.setUint32(14,crc,true);h.setUint32(18,data.length,true);h.setUint32(22,data.length,true);h.setUint16(26,nb.length,true);h.setUint16(28,0,true);
+    parts.push(new Uint8Array(h.buffer),nb,data);
+    const c=new DataView(new ArrayBuffer(46));
+    c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(10,0,true);c.setUint16(12,dt,true);c.setUint16(14,dd,true);
+    c.setUint32(16,crc,true);c.setUint32(20,data.length,true);c.setUint32(24,data.length,true);c.setUint16(28,nb.length,true);
+    c.setUint32(42,off,true);
+    cen.push(new Uint8Array(c.buffer),nb);
+    off+=30+nb.length+data.length;
+  });
+  const cenLen=cen.reduce((s,a)=>s+a.length,0);
+  const e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cenLen,true);e.setUint32(16,off,true);
+  const all=[...parts,...cen,new Uint8Array(e.buffer)], out=new Uint8Array(all.reduce((s,a)=>s+a.length,0));
+  let p=0; all.forEach(a=>{out.set(a,p);p+=a.length;}); return out;
+}
+const xe = s => String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function colL(i){ let s=""; i++; while(i>0){ const m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=Math.floor((i-1)/26);} return s; }
+function serialDate(iso){ const [y,m,d]=iso.split("-").map(Number); return (Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000; }
+function serialDT(ts){ const d=new Date(ts); return (Date.UTC(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours(),d.getMinutes(),d.getSeconds())-Date.UTC(1899,11,30))/86400000; }
+function buildXlsx(rs){
+  const cols=columns(), last=colL(cols.length-1), n=rs.length+1;
+  let rows = `<row r="1">`+cols.map((c,i)=>`<c r="${colL(i)}1" t="inlineStr" s="1"><is><t>${xe(c.h)}</t></is></c>`).join("")+`</row>`;
+  rs.forEach((r,ri)=>{
+    const R=ri+2;
+    rows += `<row r="${R}">` + cols.map((c,i)=>{
+      const ref=colL(i)+R, v=c.get(r);
+      if (v===""||v==null) return "";
+      if (c.kind==="date" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return `<c r="${ref}" s="2"><v>${serialDate(v)}</v></c>`;
+      if (c.kind==="dt") return `<c r="${ref}" s="3"><v>${serialDT(v)}</v></c>`;
+      if (typeof v==="number") return `<c r="${ref}" s="5"><v>${v}</v></c>`;
+      return `<c r="${ref}" t="inlineStr" s="4"><is><t xml:space="preserve">${xe(v)}</t></is></c>`;
+    }).join("") + `</row>`;
+  });
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><dimension ref="A1:${last}${n}"/><sheetViews><sheetView workbookViewId="0"><pane xSplit="1" ySplit="1" topLeftCell="B2" activePane="bottomRight" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>${cols.map((c,i)=>`<col min="${i+1}" max="${i+1}" width="${c.w}" customWidth="1"/>`).join("")}</cols><sheetData>${rows}</sheetData><autoFilter ref="A1:${last}${n}"/></worksheet>`;
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="dd.mm.yyyy"/><numFmt numFmtId="165" formatCode="dd.mm.yyyy hh:mm"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><name val="Calibri"/><family val="2"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE3EAFC"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment vertical="top"/></xf><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment vertical="top"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const wb = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Анкеты" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'Анкеты'!$A$1:$${last}$${n}</definedName></definedNames></workbook>`;
+  return zip([
+    ["[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
+    ["_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ["xl/workbook.xml", wb],
+    ["xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ["xl/worksheets/sheet1.xml", sheet],
+    ["xl/styles.xml", styles]
+  ]);
+}
+function buildCsv(rs){
+  const cols=columns(), q=s=>{ s=String(s==null?"":s); return /[;"\n\r]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const val=(c,r)=>{ const v=c.get(r); if(v===""||v==null) return ""; if(c.kind==="date") return ruDate(v); if(c.kind==="dt") return ruDT(v); if(typeof v==="number") return String(v).replace(".",","); return v; };
+  return "﻿"+[cols.map(c=>q(c.h)).join(";")].concat(rs.map(r=>cols.map(c=>q(val(c,r))).join(";"))).join("\r\n");
+}
+function buildMd(rs){
+  const cell = s => String(s||"").replace(/\|/g,"\\|").replace(/\n+/g," ");
+  const cnt = p => rs.filter(r=>r.v.priority===p).length;
+  let md = `# МАРК — анкеты посетителей · ${settings.event}\n\nВыгрузка: ${ruDT(Date.now())} · анкет: ${rs.length} · A: ${cnt("A")} · B: ${cnt("B")} · C: ${cnt("C")}\n\n`;
+  if (!rs.length) return md + "_Анкет нет._\n";
+  md += "| № | Организация | ФИО | Регион | Тип | Пр. | Следующий шаг |\n|---|---|---|---|---|---|---|\n";
+  rs.forEach(r=>{ const v=r.v; md += `| ${cell(r.formNo)} | ${cell(v.org)} | ${cell(v.fio)} | ${cell(v.region)} | ${cell(textVal(FIELDS.visitorType,v))} | ${cell(v.priority)} | ${cell(textVal(FIELDS.nextSteps,v))} |\n`; });
+  rs.forEach(r=>{
+    const v=r.v;
+    md += `\n---\n\n## ${r.formNo} · ${v.org||v.fio||"без названия"}${v.priority?" · приоритет "+v.priority:""}\n\n`;
+    md += `Дата: ${ruDate(v.date||isoOf(r.createdAt))} · сотрудник: ${v.staff||"—"} · создано ${ruDT(r.createdAt)}\n`;
+    SCHEMA.forEach(s=>{
+      const lines = s.fields.filter(f=>f.t!=="ro" && !["date","staff","priority"].includes(f.k)).map(f=>{
+        const t = textVal(f,v); if(!t) return null;
+        const lab = f.t==="toggle" ? f.o[0] : f.l;
+        return f.t==="toggle" ? `- ${lab}` : `- **${lab}:** ${t.replace(/\n/g," ")}${f.u?" "+f.u:""}`;
+      }).filter(Boolean);
+      if (lines.length) md += `\n### ${s.staff?"Для сотрудника стенда":s.num+". "+s.title}\n\n${lines.join("\n")}\n`;
+    });
+  });
+  return md;
+}
+function stamp(){ const d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"_"+pad(d.getHours())+"-"+pad(d.getMinutes()); }
+async function saveFile(name, data, mime){
+  if (mode!=="file"){
+    const dl = downloads || await dlPromise;
+    if (!dl){ toast("В этом окне сохранение файлов недоступно. Используйте «Скопировать Markdown».", true); return; }
+    try{ await dl.save({filename:name, data}); toast("Файл готов: "+name); }
+    catch(e){ toast(e && e.code==="declined" ? "Сохранение отменено" : "Не удалось сохранить файл: "+((e&&e.message)||"ошибка"), e&&e.code!=="declined"); }
+    return;
+  }
+  const blob = data instanceof Blob ? data : new Blob([data], {type:mime});
+  // On a touch tablet (iPad) offer the system share sheet: «Сохранить в Файлы», AirDrop, Почта
+  if (navigator.maxTouchPoints>0 && navigator.canShare && window.File){
+    const types = [mime.split(";")[0], "text/plain", "application/octet-stream"];
+    for (const t of types){
+      let file; try{ file = new File([blob], name, {type:t}); }catch(e){ break; }
+      if (navigator.canShare({files:[file]})){
+        navigator.share({files:[file]}).then(()=>toast("Файл передан: "+name))
+          .catch(e=>toast(e && e.name==="AbortError" ? "Сохранение отменено" : "Не удалось передать файл: "+((e&&e.message)||"ошибка"), !(e&&e.name==="AbortError")));
+        return;
+      }
+    }
+  }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 1500);
+  toast("Файл сохранён: "+name);
+}
+function needRows(){ const rs=scoped(); if(!rs.length){ toast("Нет анкет для выгрузки по выбранному условию", true); return null;} return rs; }
+$("#exXlsx").addEventListener("click", ()=>{ const rs=needRows(); if(rs) saveFile(`MARK_ankety_${stamp()}.xlsx`, buildXlsx(rs), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); });
+$("#exCsv").addEventListener("click", ()=>{ const rs=needRows(); if(rs) saveFile(`MARK_ankety_${stamp()}.csv`, buildCsv(rs), "text/csv;charset=utf-8"); });
+$("#exMd").addEventListener("click", ()=>{ const rs=needRows(); if(rs) saveFile(`MARK_ankety_${stamp()}.md`, buildMd(rs), "text/markdown;charset=utf-8"); });
+$("#exMdCopy").addEventListener("click", ()=>{
+  const rs=needRows(); if(!rs) return; const md=buildMd(rs);
+  navigator.clipboard.writeText(md).then(()=>toast("Markdown скопирован")).catch(()=>{
+    const d=$("#mdPrev"); d.open=true; const pre=$("#mdText"); pre.textContent=md;
+    const range=document.createRange(); range.selectNodeContents(pre); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    toast("Текст выделен в предпросмотре — скопируйте его вручную");
+  });
+});
+$("#exJson").addEventListener("click", ()=>{
+  const all = Object.values(records).map(r=>{const c=clone(r); delete c._pending; return c;});
+  saveFile(`MARK_backup_${stamp()}.json`, JSON.stringify({format:"mark-survey", version:1, event:settings.event, exportedAt:new Date().toISOString(), records:all}, null, 1), "application/json");
+});
+$("#importFile").addEventListener("change", e=>{
+  const file=e.target.files[0]; if(!file) return;
+  const fr=new FileReader();
+  fr.onload=()=>{
+    try{
+      const j=JSON.parse(fr.result); if(j.format!=="mark-survey"||!Array.isArray(j.records)) throw new Error("not ours");
+      let added=0, upd=0;
+      j.records.forEach(r=>{
+        if(!r||!r.id||!r.v) return;
+        const cur=records[r.id];
+        if(!cur){ records[r.id]=Object.assign(r,{_pending:true}); added++; }
+        else if((r.updatedAt||0)>(cur.updatedAt||0)){ records[r.id]=Object.assign(r,{_pending:true}); upd++; }
+      });
+      persist(); flush(); renderAll(); toast(`Загружено: новых ${added}, обновлено ${upd}`);
+    }catch(err){ toast("Это не файл резервной копии анкет МАРК", true); }
+    e.target.value="";
+  };
+  fr.readAsText(file);
+});
+function renderExport(){
+  const rs = scoped(), L = live();
+  $("#scopeCount").textContent = "Попадёт в выгрузку: "+rs.length;
+  const c = p=>L.filter(r=>r.v.priority===p).length;
+  $("#stats").innerHTML = [["Всего",L.length],["A",c("A")],["B",c("B")],["C",c("C")],["Сегодня",L.filter(r=>(r.v.date||isoOf(r.createdAt))===todayISO()).length],["Согласие",L.filter(r=>r.v.consent==="да").length],["Дилеры",L.filter(r=>r.v.visitorType===DEALER).length]].concat(mode==="file"?[["Без согласия",L.filter(r=>r.v.consent==="нет").length]]:[["В очереди",Object.values(records).filter(r=>r._pending).length]])
+    .map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
+  $("#mdText").textContent = buildMd(rs);
+  $("#storeNote").textContent = (mode==="file" && window.__pwaReady ? "Приложение сохранено на планшете и открывается без интернета. " : "") + (mode==="cloud" && !noWrite
+    ? "Анкеты сохраняются на планшете и отправляются в общую базу этой страницы. Все планшеты с этой ссылкой видят одни и те же анкеты."
+    : mode==="file"
+      ? "Анкеты хранятся только в браузере этого планшета. Делайте выгрузку или резервную копию в конце каждого дня."
+      : "Общая база сейчас недоступна: анкеты сохраняются на планшете и будут отправлены, когда связь появится.");
+}
+["setDevice","setStaff","setEvent"].forEach(id=>{
+  const key={setDevice:"device",setStaff:"staff",setEvent:"event"}[id];
+  const el=document.getElementById(id); el.value=settings[key]||"";
+  el.addEventListener("input",()=>{
+    let v=el.value.trim();
+    if(key==="device"){ v=v.replace(/[^0-9A-Za-zА-Яа-яЁё]/g,"").toUpperCase(); if(!v) return; }
+    settings[key]=v; LS.set(K_SET,settings);
+    if(key==="staff" && !editingId){ form.staff=v; syncField("staff"); }
+    renderAll();
+  });
+});
+
+/* ---------- Status / sync ---------- */
+function renderStatus(){
+  const pend = Object.values(records).filter(r=>r._pending).length;
+  let s="wait", t="Подключение…";
+  if (mode==="file"){ s=localOk?"local":"err"; t=localOk?"Только на этом планшете":"Хранилище браузера недоступно"; }
+  else if (mode==="cloud"){
+    if (noWrite){ s="err"; t="Нет прав на запись в общую базу"; }
+    else if (pend){ s="pending"; t="Ждут отправки: "+pend; }
+    else { s="ok"; t="Общая база · всё отправлено"; }
+  } else if (mode==="local"){ s=pend?"pending":"local"; t = cloudErr || (pend ? "Без связи · на планшете: "+pend : "Только на этом планшете"); }
+  const el=$("#status"); el.dataset.s=s; $("#statusText").textContent=t;
+}
+function renderAll(){
+  $("#evName").textContent = "Анкета посетителя · "+settings.event;
+  $("#listCount").textContent = live().length;
+  renderStatus(); afterChange(true); syncField("formNoView");
+  if (!$("#view-list").hidden) renderList();
+  if (!$("#view-export").hidden) renderExport();
+}
+function bodyOf(r){ const c=clone(r); delete c._pending; return c; }
+async function flush(){
+  if (!db || flushing || noWrite) { renderStatus(); return; }
+  flushing=true;
+  try{
+    const pend = Object.values(records).filter(r=>r._pending).sort((a,b)=>a.updatedAt-b.updatedAt);
+    for (const r of pend){
+      const sentAt = r.updatedAt;
+      try{ await db.collection("visitors").doc(r.id).set(bodyOf(r)); }
+      catch(e){
+        const code=e&&e.code;
+        if (code==="invalid_argument"){ noWrite=true; toast("Нет прав на запись в общую базу. Анкеты остаются на планшете.", true); }
+        else if (code==="quota_exceeded"){ toast("Общая база заполнена. Выгрузите анкеты в Excel.", true); }
+        break;
+      }
+      if (records[r.id] && records[r.id].updatedAt===sentAt){ records[r.id]._pending=false; }
+      persist();
+    }
+  } finally { flushing=false; renderAll(); }
+}
+function onRemote(snap){
+  let changed=false;
+  snap.docs.forEach(d=>{
+    const x=d.data(); if(!x||!x.id) return;
+    const cur=records[d.id];
+    if (!cur || (!cur._pending && cur.updatedAt!==x.updatedAt) || (cur._pending && x.updatedAt>cur.updatedAt) || (cur._pending && x.updatedAt===cur.updatedAt)){
+      records[d.id]=Object.assign(clone(x),{_pending:false}); changed=true;
+    }
+  });
+  if (changed){ persist(); renderAll(); }
+  if (mode!=="cloud"){ mode="cloud"; cloudErr=""; renderAll(); flush(); }
+}
+let unsub=null;
+function subscribe(){
+  if (unsub) try{unsub();}catch(e){}
+  unsub = db.collection("visitors").onSnapshot(onRemote, e=>{
+    mode="local"; cloudErr="Связь с общей базой прервана"; renderAll();
+    if (e && (e.code==="unavailable"||e.code==="resource_exhausted")) setTimeout(()=>{ mode="cloud"; subscribe(); }, 30000);
+  });
+}
+async function initCloud(){
+  if (mode==="file"){ renderAll(); return; }
+  try{ db = await window.claude.use("db"); }catch(e){ db=null; }
+  downloads = await dlPromise;
+  if (!db){ mode="local"; cloudErr="Общая база недоступна · данные на планшете"; renderAll(); return; }
+  mode="cloud"; renderAll(); subscribe(); flush();
+}
+setInterval(()=>{ if(Object.values(records).some(r=>r._pending)) flush(); }, 20000);
+window.addEventListener("online", flush);
+
+/* ---------- Toast & wake lock ---------- */
+let toastT;
+function toast(msg, err){ const t=$("#toast"); t.textContent=msg; t.classList.toggle("err",!!err); t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"), err?4200:2600); }
+let wl=null;
+async function wake(){ try{ if(navigator.wakeLock && !wl){ wl=await navigator.wakeLock.request("screen"); wl.addEventListener("release",()=>{wl=null;}); } }catch(e){} }
+document.addEventListener("pointerdown", wake, {once:true});
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") wake(); });
+
+/* ---------- Boot ---------- */
+buildForm();
+const d = LS.get(K_DRAFT, null);
+if (d && d.form){ form = d.form; editingId = d.editingId && records[d.editingId] ? d.editingId : null; if(!form.date) form.date=todayISO(); }
+else form = blankForm();
+if (editingId){ const r=records[editingId]; $("#editbar").hidden=false; $("#editNo").textContent=r.formNo; $("#delBtn").hidden=false; $("#saveBtn").textContent="Сохранить изменения"; $("#clearBtn").textContent="Закрыть без сохранения"; }
+syncAll(); renderAll(); updateRail();
+initCloud();
+if (mode==="file"){
+  try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+  const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+  const standalone = navigator.standalone===true || matchMedia("(display-mode: standalone)").matches;
+  if (iOS && !standalone && location.protocol.startsWith("http") && !LS.get("markSurvey.installHint", false)) $("#installbar").hidden=false;
+  $("#installHide").addEventListener("click", ()=>{ $("#installbar").hidden=true; LS.set("markSurvey.installHint", true); });
+}
+window.__markSurvey = {buildXlsx, buildMd, buildCsv, scoped, records:()=>records};
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("sw.js").then(() => navigator.serviceWorker.ready).then(() => { window.__pwaReady = true; }).catch(() => {});
+}
+</script>
+</body></html>
