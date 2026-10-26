@@ -115,7 +115,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .chip[data-m][aria-pressed="true"]::before{border-color:var(--accent-ink);background:var(--accent-ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%231d4ed8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/14px no-repeat}
 .chip:disabled{opacity:.4;cursor:not-allowed}
 .chip.pri{min-width:76px;justify-content:center;font-family:var(--f-display);font-weight:700;font-size:18px}
-.other{margin-top:10px}
+.other{margin-top:4px;display:flex;flex-direction:column;gap:8px;padding:12px 14px 14px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 12px 12px 0}
+.other .lbl{font-size:14px;font-weight:600;color:var(--ink)}
+.other .inp input{background:var(--surface)}
 .hint{font-size:13px;color:var(--muted)}
 .hint.flash{color:var(--warn);font-weight:600}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
@@ -346,8 +348,8 @@ const SCHEMA = [
     {k:"conditions", t:"multi", l:"Условия эксплуатации", w:"full", box:true, o:["нестабильный интернет","нестабильная геолокация","есть место для парковки внутри двора","есть автоматические ворота"]},
     {k:"pushingNow", t:"multi", l:"Сейчас подталкиваем", w:"full", o:["вручную","трактором / погрузчиком","роботом","не подталкиваем"], excl:"не подталкиваем"},
     {k:"equipment", t:"text", l:"Марка техники / робота", w:"half"},
-    {k:"pushesPerDay", t:"num", l:"Подталкиваний днём", w:"half"},
-    {k:"staffHours", t:"num", l:"Время персонала на подталкивание", w:"third", u:"ч/сутки", dec:true},
+    {k:"staffHours", t:"num", l:"Время персонала на подталкивание", w:"half", u:"ч/сутки", dec:true},
+    {k:"pushesPerDay", t:"num", l:"Подталкиваний днём", w:"third"},
     {k:"nightPushes", t:"num", l:"Подталкиваний ночью", w:"third"},
     {k:"noNight", t:"toggle", l:"Ночью", w:"third", o:["ночью не подталкиваем"]}
   ]},
@@ -360,7 +362,7 @@ const SCHEMA = [
   ]},
   {id:"s4", num:"4", title:"Следующий шаг", fields:[
     {k:"nextSteps", t:"multi", l:"Что дальше", w:"full", o:["прислать материалы / цену","техническая консультация","обследование фермы","обсудить демонстрацию / пилот","обсудить дилерство / сервис","пока без продолжения"], excl:"пока без продолжения"},
-    {k:"contactWhen", t:"text", l:"Когда удобно связаться", w:"half"},
+    {k:"contactWhen", t:"date", l:"Когда удобно связаться", w:"half"},
     {k:"channel", t:"single", l:"Канал", w:"half", o:["звонок","e-mail","мессенджер"]}
   ]},
   {id:"s5", num:"★", title:"Для сотрудника стенда", staff:true, fields:[
@@ -407,7 +409,7 @@ function fieldHTML(f){
   if (f.t==="single" || f.t==="multi" || f.t==="toggle"){
     const m = f.t!=="single";
     const chips = f.o.map(v=>`<button type="button" class="chip${f.pri?' pri':''}" data-k="${f.k}" data-v="${esc(v)}" ${m?'data-m':''} aria-pressed="false">${esc(v)}</button>`).join("");
-    const other = f.other ? `<div class="inp other" id="${id}_ow" hidden><input id="${id}_o" data-k="${f.k}Other" placeholder="Уточните" autocomplete="off" enterkeyhint="next"></div>` : "";
+    const other = f.other ? `<div class="other" id="${id}_ow" hidden><label class="lbl" for="${id}_o">Другое — уточните</label><div class="inp"><input id="${id}_o" data-k="${f.k}Other" placeholder="Впишите свой вариант" autocomplete="off" autocapitalize="sentences" enterkeyhint="next"></div></div>` : "";
     const hint = f.max ? `<span class="hint" id="${id}_h">Можно выбрать до ${f.max}</span>` : "";
     return `<div class="field ${w}${f.box?' boxed':''}"><span class="lbl" id="${id}_l">${lbl}</span><div class="chips${f.t==='toggle'?' fill':''}" role="group" aria-labelledby="${id}_l">${chips}</div>${other}${hint}</div>`;
   }
@@ -521,6 +523,9 @@ function onChip(b){
     form[k]=arr;
   }
   syncField(k); afterChange();
+  if (f.other && v===f.other && b.getAttribute("aria-pressed")==="true"){
+    const o=document.getElementById("f_"+k+"_o"); if(o){ o.focus({preventScroll:true}); o.scrollIntoView({block:"center", behavior:"smooth"}); }
+  }
 }
 document.addEventListener("click", e=>{
   const ex = e.target.closest("[data-expand]");
@@ -678,7 +683,7 @@ function scoped(){
   return rs;
 }
 function isoOf(ts){ const d=new Date(ts); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
-function ruDate(iso){ if(!iso) return ""; const [y,m,d]=iso.split("-"); return d+"."+m+"."+y; }
+function ruDate(iso){ if(!iso) return ""; if(!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return String(iso); const [y,m,d]=iso.split("-"); return d+"."+m+"."+y; }
 function ruDT(ts){ const d=new Date(ts); return pad(d.getDate())+"."+pad(d.getMonth()+1)+"."+d.getFullYear()+" "+pad(d.getHours())+":"+pad(d.getMinutes()); }
 
 function textVal(f, v){
@@ -708,7 +713,8 @@ function columns(){
   SCHEMA.forEach(s=>{ if (s.staff) return; s.fields.forEach(f=>{
     const h = f.l + (f.u ? ", "+f.u : "") + (f.k==="noNight" ? " не подталкиваем" : "") + (f.k==="budgetUndef" ? " не определён" : "");
     const w = f.t==="area"||f.t==="multi" ? 34 : f.t==="num" ? 12 : 22;
-    cols.push({h, w, kind: f.t==="num"?"num":"text", get:r=> f.t==="num" ? (numVal(r.v[f.k])??(r.v[f.k]||"")) : textVal(f, r.v)});
+    const kind = f.t==="num" ? "num" : f.t==="date" ? "date" : "text";
+    cols.push({h, w: kind==="date" ? 14 : w, kind, get:r=> f.t==="num" ? (numVal(r.v[f.k])??(r.v[f.k]||"")) : f.t==="date" ? (r.v[f.k]||"") : textVal(f, r.v)});
   });});
   cols.push({h:"Договорились", w:34, get:r=>r.v.agreed||""});
   cols.push({h:"Ответственный", w:18, get:r=>r.v.owner||""});
