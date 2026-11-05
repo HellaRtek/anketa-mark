@@ -1080,20 +1080,24 @@ async function saveFile(name, data, mime){
   }
   const blob = data instanceof Blob ? data : new Blob([data], {type:mime});
   // On a touch tablet (iPad) offer the system share sheet: «Сохранить в Файлы», AirDrop, Почта
+  let shareDenied=false;
   if (navigator.maxTouchPoints>0 && navigator.canShare && window.File){
     const types = [mime.split(";")[0], "text/plain", "application/octet-stream"];
     for (const t of types){
       let file; try{ file = new File([blob], name, {type:t}); }catch(e){ break; }
       if (navigator.canShare({files:[file]})){
-        navigator.share({files:[file]}).then(()=>toast("Файл передан: "+name))
-          .catch(e=>toast(e && e.name==="AbortError" ? "Сохранение отменено" : "Не удалось передать файл: "+((e&&e.message)||"ошибка"), !(e&&e.name==="AbortError")));
-        return;
+        try{ await navigator.share({files:[file]}); toast("Файл передан: "+name); return; }
+        catch(e){
+          if (e && e.name==="AbortError"){ toast("Сохранение отменено"); return; }
+          /* Система отклонила передачу (напр. «Permission denied» на Android) — уходим на обычное скачивание */
+          shareDenied=true; break;
+        }
       }
     }
   }
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 1500);
-  toast("Файл сохранён: "+name);
+  toast(shareDenied ? "Передача недоступна на этом устройстве — файл сохранён в «Загрузки»: "+name : "Файл сохранён: "+name, shareDenied);
 }
 /* Long exports (archive, backup) are prepared first, then saved with one more tap if the tablet needs it */
 let pending=null;
